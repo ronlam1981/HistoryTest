@@ -1,981 +1,249 @@
-<!DOCTYPE html>
-<html lang="zh-HK">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>歷史學習與測驗平台</title>
-    <!-- Tailwind CSS for styling -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Canvas Confetti for celebration animations -->
-    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
-    <!-- html2canvas for screenshot functionality -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
-    <style>
-        /* Custom animations */
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-        @keyframes shake { 0%, 100% { transform: translateX(0); } 25% { transform: translateX(-5px); } 75% { transform: translateX(5px); } }
-        .fade-in { animation: fadeIn 0.3s ease-out forwards; }
-        .shake { animation: shake 0.4s ease-in-out; }
-        .option-btn { transition: all 0.2s; }
-        .option-btn:active { transform: scale(0.98); }
-        
-        /* Tab Styles */
-        .tab-active { background-color: white; color: #2563eb; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
-        .tab-inactive { color: #64748b; }
-        .tab-inactive:hover { color: #334155; }
-    </style>
-</head>
-<body class="bg-slate-100 min-h-screen text-slate-800 font-sans selection:bg-blue-200">
-
-<div id="app" class="max-w-md mx-auto bg-white min-h-screen shadow-xl relative overflow-hidden flex flex-col">
-    
-    <!-- Header -->
-    <header class="bg-blue-600 text-white p-4 shadow-md flex justify-between items-center z-10" id="main-header">
-        <h1 class="font-bold text-lg" id="header-title">歷史學習平台</h1>
-        <span id="header-username" class="text-sm font-medium opacity-80 bg-blue-700 px-3 py-1 rounded-full"></span>
-    </header>
-
-    <!-- Content Area -->
-    <main class="flex-grow relative overflow-y-auto" id="main-content">
-        
-        <!-- ==================== LOGIN SCREEN ==================== -->
-        <div id="screen-login" class="absolute inset-0 p-6 flex flex-col justify-center items-center fade-in bg-white z-20">
-            <div class="bg-blue-50 p-6 rounded-2xl w-full max-w-sm text-center border border-blue-100 shadow-sm">
-                <h2 class="text-2xl font-bold text-blue-800 mb-2">歡迎來到</h2>
-                <h3 class="text-xl font-bold text-slate-700 mb-6">初一歷史總溫習</h3>
-                <p class="text-sm text-slate-500 mb-4">請先輸入您的名字以開始記錄學習進度</p>
-                <input type="text" id="username-input" placeholder="您的名字" class="w-full px-4 py-3 rounded-lg border-2 border-slate-200 focus:border-blue-500 focus:outline-none mb-4 text-center text-lg transition-colors">
-                <button onclick="app.login()" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-lg shadow-md transition-colors text-lg">
-                    進入系統
-                </button>
-            </div>
-        </div>
-
-        <!-- ==================== MENU SCREEN ==================== -->
-        <div id="screen-menu" class="hidden absolute inset-0 p-6 flex flex-col items-center fade-in bg-slate-50 z-10 pt-8">
-            <div class="text-center mb-6">
-                <h2 class="text-2xl font-bold text-slate-800" id="welcome-text">歡迎回來！</h2>
-                <p class="text-slate-500 mt-2">請選擇您要進行的題庫與模式</p>
-            </div>
-            
-            <!-- Bank Selector -->
-            <div class="flex bg-slate-200 p-1 rounded-xl mb-8 w-full max-w-sm">
-                <button onclick="app.switchBank('bank1')" id="menu-tab-bank1" class="flex-1 py-2.5 rounded-lg text-sm font-bold transition-all tab-active">溫習 1</button>
-                <button onclick="app.switchBank('bank2')" id="menu-tab-bank2" class="flex-1 py-2.5 rounded-lg text-sm font-bold transition-all tab-inactive">溫習 2</button>
-                <button onclick="app.switchBank('bank3')" id="menu-tab-bank3" class="flex-1 py-2.5 rounded-lg text-sm font-bold transition-all tab-inactive">溫習 3</button>
-            </div>
-
-            <div class="w-full space-y-4 max-w-sm">
-                <div class="text-center text-blue-800 font-bold mb-2" id="current-bank-title">初一第二段歷史總溫習 1</div>
-                
-                <button onclick="app.startLearning()" class="w-full bg-white border-2 border-blue-500 text-blue-600 hover:bg-blue-50 font-bold py-4 rounded-xl shadow-sm transition-all flex flex-col items-center">
-                    <span class="text-xl mb-1">📖 學習模式</span>
-                    <span class="text-xs font-normal opacity-80" id="learning-progress-text">熟記所有題目：進度 0%</span>
-                    <span class="text-xs font-bold text-blue-400 mt-1" id="learning-batch-text">(每次順序溫習 10 題)</span>
-                </button>
-                
-                <button onclick="app.startTest()" class="w-full bg-white border-2 border-emerald-500 text-emerald-600 hover:bg-emerald-50 font-bold py-4 rounded-xl shadow-sm transition-all flex flex-col items-center relative">
-                    <span class="text-xl mb-1">⚔️ 測驗模式</span>
-                    <span class="text-xs font-normal opacity-80">挑戰滿分！(隨機 40 題)</span>
-                    <div id="test-recommend-badge" class="hidden absolute -top-3 -right-2 bg-red-500 text-white text-xs px-2 py-1 rounded-full shadow-md animate-pulse">建議進行!</div>
-                </button>
-                
-                <button onclick="app.showStats()" class="w-full bg-white border-2 border-slate-300 text-slate-600 hover:bg-slate-50 font-bold py-3 rounded-xl shadow-sm transition-all flex items-center justify-center">
-                    📊 查看此題庫記錄
-                </button>
-            </div>
-
-            <button onclick="app.logout()" class="mt-auto pt-8 text-slate-400 hover:text-slate-600 underline text-sm pb-4">
-                登出更換使用者
-            </button>
-        </div>
-
-        <!-- ==================== LEARNING SCREEN ==================== -->
-        <div id="screen-learning" class="hidden absolute inset-0 p-5 flex flex-col fade-in bg-white z-20">
-            <div class="flex justify-between items-center mb-4">
-                <button onclick="app.exitLearning()" class="text-slate-400 hover:text-slate-600 p-2">
-                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
-                </button>
-                <div class="text-sm font-bold text-blue-600 bg-blue-50 px-3 py-1 rounded-full border border-blue-100 flex flex-col items-end">
-                    <span><span id="learning-bank-label" class="mr-2 border-r border-blue-200 pr-2">溫習 1</span>總進度: <span id="learning-global-counter">0/40</span> 題</span>
-                </div>
-            </div>
-            
-            <div class="w-full bg-slate-200 rounded-full h-2.5 mb-2">
-                <div id="learning-progress-bar" class="bg-blue-600 h-2.5 rounded-full transition-all duration-500" style="width: 0%"></div>
-            </div>
-            <div class="text-xs text-slate-400 text-right mb-4">本次溫習區間進度: <span id="learning-session-counter">1/10</span></div>
-
-            <div id="learning-question-container" class="flex-grow flex flex-col pb-20">
-                <h3 id="learning-question-text" class="text-xl font-bold text-slate-800 mb-6 leading-relaxed"></h3>
-                <div id="learning-options" class="space-y-3 mb-6">
-                    <!-- Options injected here -->
-                </div>
-                <div id="learning-feedback-content" class="hidden mb-6"></div>
-            </div>
-
-            <!-- Fixed Bottom Action Area for Learning -->
-            <div id="learning-action-area" class="hidden absolute bottom-0 left-0 right-0 p-4 bg-white border-t border-slate-100 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)] z-30">
-                <button id="learning-next-btn" onclick="app.nextLearningQuestion()" class="w-full bg-emerald-500 hover:bg-emerald-600 text-white font-bold py-4 rounded-xl shadow-md transition-colors text-lg">我明白了，下一題</button>
-            </div>
-        </div>
-
-        <!-- ==================== TEST SCREEN ==================== -->
-        <div id="screen-test" class="hidden absolute inset-0 p-5 flex flex-col fade-in bg-white z-20">
-            <div class="flex justify-between items-center mb-4">
-                <button id="test-exit-btn" onclick="app.exitTest()" class="text-slate-400 hover:text-slate-600 p-2">
-                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
-                </button>
-                <div class="text-sm font-bold text-emerald-600 bg-emerald-50 px-3 py-1 rounded-full border border-emerald-100">
-                    <span id="test-bank-label" class="mr-2 border-r border-emerald-200 pr-2">溫習 1</span>
-                    第 <span id="test-counter">1</span> / 40 題
-                </div>
-            </div>
-            
-            <div id="test-question-container" class="flex-grow flex flex-col mt-4">
-                <h3 id="test-question-text" class="text-xl font-bold text-slate-800 mb-6 leading-relaxed"></h3>
-                <div id="test-options" class="space-y-3">
-                    <!-- Options injected here -->
-                </div>
-            </div>
-        </div>
-
-        <!-- ==================== TEST RESULT SCREEN ==================== -->
-        <div id="screen-test-result" class="hidden absolute inset-0 p-6 flex flex-col justify-center items-center fade-in bg-slate-50 z-30">
-            <div id="screenshot-area" class="w-full flex flex-col items-center bg-slate-50 p-4 rounded-xl">
-                <div class="text-center mb-6">
-                    <div id="test-result-icon" class="text-6xl mb-4"></div>
-                    <h2 id="test-result-title" class="text-3xl font-bold text-slate-800 mb-2"></h2>
-                    <p id="test-result-desc" class="text-slate-500 font-medium"></p>
-                </div>
-                
-                <div class="bg-white p-6 rounded-2xl w-full shadow-sm border border-slate-100 text-center mb-4 relative overflow-hidden">
-                    <div class="absolute top-0 right-0 bg-emerald-100 text-emerald-700 text-xs px-2 py-1 rounded-bl-lg font-bold" id="result-bank-label">溫習 1</div>
-                    <div class="absolute top-0 left-0 bg-blue-100 text-blue-700 text-xs px-2 py-1 rounded-br-lg font-bold" id="result-user-label"></div>
-                    <div class="text-5xl font-black mb-2 text-slate-800" id="test-final-score"></div>
-                    <div class="text-sm text-slate-400">總分</div>
-                </div>
-            </div>
-
-            <div class="w-full space-y-3 mt-4">
-                <button id="test-screenshot-btn" onclick="app.takeScreenshot()" class="hidden w-full bg-indigo-500 hover:bg-indigo-600 text-white font-bold py-3 rounded-xl shadow-md transition-colors text-lg flex justify-center items-center">
-                    <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
-                    儲存截圖傳給爸媽
-                </button>
-                <button id="test-action-btn" class="w-full font-bold py-4 rounded-xl shadow-md transition-colors text-lg text-white"></button>
-                <button onclick="app.showMenu()" class="w-full bg-slate-200 hover:bg-slate-300 text-slate-700 font-bold py-3 rounded-xl transition-colors text-sm">返回主選單</button>
-            </div>
-        </div>
-
-        <!-- ==================== REVIEW SCREEN (錯題回顧) ==================== -->
-        <div id="screen-review" class="hidden absolute inset-0 p-5 flex flex-col fade-in bg-white z-40">
-            <div class="flex justify-between items-center mb-4">
-                <button onclick="app.finishReview()" class="text-slate-400 hover:text-slate-600 p-2">
-                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
-                </button>
-                <div class="text-sm font-bold text-amber-600 bg-amber-50 px-3 py-1 rounded-full border border-amber-100">
-                    錯題回顧: 第 <span id="review-counter">1/5</span> 題
-                </div>
-            </div>
-
-            <div class="flex-grow overflow-y-auto pb-24">
-                <h3 id="review-question-text" class="text-xl font-bold text-slate-800 mb-6 leading-relaxed"></h3>
-                <div id="review-options" class="space-y-3 mb-6">
-                    <!-- Options injected here -->
-                </div>
-                <div id="review-feedback-content" class="mb-6"></div>
-            </div>
-
-            <!-- Fixed Bottom Action Area for Review -->
-            <div class="absolute bottom-0 left-0 right-0 p-4 bg-white border-t border-slate-100 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)]">
-                <button onclick="app.nextReviewQuestion()" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 rounded-xl shadow-md transition-colors text-lg">我明白了，下一題</button>
-            </div>
-        </div>
-
-        <!-- ==================== STATS SCREEN ==================== -->
-        <div id="screen-stats" class="hidden absolute inset-0 p-5 flex flex-col fade-in bg-slate-50 z-20 overflow-hidden">
-            <div class="flex items-center mb-6">
-                <button onclick="app.showMenu()" class="text-slate-500 hover:text-slate-800 mr-3 p-1">
-                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
-                </button>
-                <h2 class="text-xl font-bold text-slate-800">學習記錄</h2>
-            </div>
-
-            <!-- Stats Bank Selector -->
-            <div class="flex bg-slate-200 p-1 rounded-xl mb-6 w-full">
-                <button onclick="app.switchStatsBank('bank1')" id="stats-tab-bank1" class="flex-1 py-2 rounded-lg text-sm font-bold transition-all tab-active">溫習 1</button>
-                <button onclick="app.switchStatsBank('bank2')" id="stats-tab-bank2" class="flex-1 py-2 rounded-lg text-sm font-bold transition-all tab-inactive">溫習 2</button>
-                <button onclick="app.switchStatsBank('bank3')" id="stats-tab-bank3" class="flex-1 py-2 rounded-lg text-sm font-bold transition-all tab-inactive">溫習 3</button>
-            </div>
-
-            <div class="flex-grow overflow-y-auto space-y-4 pb-10">
-                <div class="text-center font-bold text-blue-700 mb-2" id="stats-bank-title">初一第二段歷史總溫習 1</div>
-                
-                <!-- Overall Progress -->
-                <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-100">
-                    <h3 class="font-bold text-sm text-slate-500 mb-2" id="stats-learned-count-title">本區學習進度 (每題需答對2次)</h3>
-                    <div class="flex justify-between items-end mb-1">
-                        <span class="text-2xl font-bold text-blue-600" id="stats-learned-count">0/40</span>
-                        <span class="text-sm text-slate-400">已熟記</span>
-                    </div>
-                    <div class="w-full bg-slate-100 rounded-full h-2">
-                        <div id="stats-progress-bar" class="bg-blue-500 h-2 rounded-full" style="width: 0%"></div>
-                    </div>
-                </div>
-
-                <!-- Session Logs -->
-                <div>
-                    <h3 class="font-bold text-sm text-slate-500 mb-3 px-1">本區最近活動記錄</h3>
-                    <div id="stats-logs" class="space-y-3">
-                        <!-- Logs injected here -->
-                    </div>
-                </div>
-            </div>
-        </div>
-
-    </main>
-</div>
-
-<!-- ==================== JAVASCRIPT LOGIC ==================== -->
-<script>
-const BANK_INFO = {
-    'bank1': { title: '初一第二段歷史總溫習 1', short: '溫習 1' },
-    'bank2': { title: '初一第二段歷史總溫習 2', short: '溫習 2' },
-    'bank3': { title: '初一第二段歷史總溫習 3', short: '溫習 3' }
-};
-
-// Full 120 Questions extracted from user prompt with Explanations (exp)
-const QUESTION_DATA = {
-    'bank1': [
-        { id: '1_1', q: "1.奠定曹操統一北方基礎的戰役中，曹操的對手是( )。", opts: [{t:"袁紹",c:true},{t:"周瑜",c:false},{t:"孫劉聯軍",c:false},{t:"劉備",c:false}], exp: "a。官渡之戰是三國三大戰役之一，曹操以少勝多擊敗軍閥袁紹，為其日後統一黃河流域（北方）打下了堅實的基礎。" },
-        { id: '1_2', q: "2.東漢末年，曹操把漢獻帝迎到許地的主要目的是( )。", opts: [{t:"維護東漢皇帝的權威",c:false},{t:"擴大自己的政治影響力",c:true},{t:"控制漢獻帝",c:false},{t:"篡奪帝位",c:false}], exp: "b。曹操將漢獻帝迎至許昌，目的是為了「挾天子以令諸侯」，藉由皇室正統的名義發號施令，藉此擴張自身政治勢力。" },
-        { id: '1_3', q: "3.\"勿以惡小而為之，勿以善少而不為\"語出《三國志》，這是誰說的話?", opts: [{t:"諸葛亮",c:false},{t:"曹操",c:false},{t:"周瑜",c:false},{t:"劉備",c:true}], exp: "d。這句話出自蜀漢先主劉備臨終前給兒子劉禪的遺詔，勸勉他要注重品德修養，多做善事，不可因惡事微小就放任去做。" },
-        { id: '1_4', q: "4.江南地區在《史記》中曾被描述為“地域遼闊而人煙稀少”，但在漢以後的三國兩晉南北朝時期得到了開發。下列不屬於這一時期江南開發因素的是( )。", opts: [{t:"優越的自然條件",c:false},{t:"北方人口的南遷",c:false},{t:"社會秩序的相對穩定",c:false},{t:"經濟重心的南移",c:true}], exp: "d。「經濟重心南移」是江南被開發後所產生的歷史「結果」與長期趨勢，而並非促成當時江南初步開發的「原因」。" },
-        { id: '1_5', q: "5.杜甫的詩: \"功蓋三分國，名成八陣圖。\"稱讚的歷史人物是( )。", opts: [{t:"曹丕",c:false},{t:"劉備",c:false},{t:"諸葛亮",c:true},{t:"孫權",c:false}], exp: "c。這首《八陣圖》讚頌的是蜀漢丞相諸葛亮，他輔佐劉備建立蜀國（三分天下），並以精通兵法、創設八陣圖聞名。" },
-        { id: '1_6', q: "6.東漢時期，某政治家、軍事家在赤壁之戰後，轉而經營關中，掃平關中割據勢力，完成了北方的統一。他寫詩\"老驥伏櫪，志在千里；烈士暮年，壯心不已。\"這位政治家軍事家是( )。", opts: [{t:"諸葛亮",c:false},{t:"王莽",c:false},{t:"曹操",c:true},{t:"霍去病",c:false}], exp: "c。曹操在平定北方後寫下《龜雖壽》，表達其雖步入暮年，卻依然懷抱著渴望建功立業、統一天下的豪情壯志。" },
-        { id: '1_7', q: "7.下列對赤壁之戰這場戰爭的評價，正確的是( )。", opts: [{t:"為曹操以後統一北方打下基礎",c:false},{t:"東晉成功抵禦了來自北方的軍事威脅",c:false},{t:"導致了北方人口大規模南遷",c:false},{t:"為三國鼎立局面形成奠定基礎",c:true}], exp: "d。赤壁之戰中孫劉聯軍擊敗曹操，使曹軍退守北方，孫權鞏固江東，劉備佔據荊益，奠定魏蜀吳三足鼎立的基礎。" },
-        { id: '1_8', q: "8.官渡之戰，前後歷時共約 8 個月，據《三國志》記載，曹操以 2 萬多兵力，出奇制勝，擊破了袁紹 10 萬之兵，是中國歷史上以少勝多的經典戰例。官渡之戰的勝利( )。", opts: [{t:"為以後統一北方打下了基礎",c:true},{t:"使得三國鼎立局面形成",c:false},{t:"使北方再度陷入分裂和混戰",c:false},{t:"掃平了關中的割據勢力",c:false}], exp: "a。公元 200 年的官渡之戰，曹操憑藉出色的謀略燒毀袁紹糧草大敗敵軍，從此消滅北方最強大的對手，奠定統一北方基礎。" },
-        { id: '1_9', q: "9.魏晉交替之際，晉武帝大封諸侯王，藩王不僅有自己的軍隊，還能自選封國內各級官佐，委以心腹之人。下列史實與晉武帝這一措施有關的是( )。", opts: [{t:"\"國人暴動\"的發生",c:false},{t:"春秋爭霸的出現",c:false},{t:"享樂之風的盛行",c:false},{t:"\"八王之亂\"的爆發",c:true}], exp: "d。晉武帝司馬炎大封宗室為王並賦予軍政實權，本意為鞏固皇室，卻導致諸侯王勢力過大，最終引發爭奪皇位的「八王之亂」。" },
-        { id: '1_10', q: "10.在中國古代歷史上，每一次人口大遷徙都伴隨著浩劫與災難。我國古代歷史上第一次大規模的人口遷徙高潮形成於( )。", opts: [{t:"西漢後期",c:false},{t:"西晉末年",c:true},{t:"東漢後期",c:false},{t:"東晉末年",c:false}], exp: "b。西晉末年發生「八王之亂」與「五胡內亂」，中原殘破，大批北方漢人為避戰禍逃往相對安定的江南，史稱衣冠南渡。" },
-        { id: '1_11', q: "11.下列朝代中，結束分裂局面，統一了全國的有( )。", opts: [{t:"春秋、戰國",c:false},{t:"戰國、秦朝",c:false},{t:"西漢、東漢",c:false},{t:"秦朝、西晉",c:true}], exp: "d。秦朝滅六國結束春秋戰國的分裂；西晉於 280 年滅東吳，結束了三國鼎立的局面。兩者皆為大一統王朝。" },
-        { id: '1_12', q: "12.黃仁宇在《中國大歷史》中寫道：\"公元 383 年，這流亡政府的弱勢軍隊出人意外地打敗了前秦領袖苻堅所統率的絕對優勢的北方聯軍。\"這個\"流亡政府\"是( )。", opts: [{t:"東漢",c:false},{t:"西晉",c:false},{t:"東晉",c:true},{t:"北魏",c:false}], exp: "c。公元 383 年的淝水之戰，偏安江南、被視為中原正統「流亡政府」的東晉，以八萬兵力擊潰了號稱百萬的前秦大軍。" },
-        { id: '1_13', q: "13.《晉書·食貨志》記載東晉後期南方的情形是：\"天下無事，時和年豐，百姓樂業，谷帛卓，兒平家給人足賣，\"這一南方發展情形表明了三國兩晉南北朝時期( )。", opts: [{t:"北方人口大量遷移到南方",c:false},{t:"南方社會穩定促進了經濟發展",c:true},{t:"民族政權分立且矛盾尖銳",c:false},{t:"江南地區得到開發超過了北方",c:false}], exp: "b。史料描述南方「天下無事、百姓樂業」，說明當時南方相對安定的社會環境，是促進農業豐收與經濟發展的關鍵條件。" },
-        { id: '1_14', q: "14.北魏孝文帝喜好讀書，遍覽經史，深受儒學影響，並通過改革，有力地促進了鮮卑與漢族的交融。下列措施與孝文帝改革無關的是( )。", opts: [{t:"遷都洛陽，採用漢族官制",c:false},{t:"重農抑商，推行縣制",c:true},{t:"說漢話，穿漢服，改漢姓",c:false},{t:"鼓勵鮮卑族與漢族通婚",c:false}], exp: "b。孝文帝的核心改革是「漢化」政策（遷都、說漢話、改漢姓、通婚等），而推行縣制最早可追溯至春秋戰國與秦朝。" },
-        { id: '1_15', q: "15.東晉南朝時期，來自北方的麥、黍、粟以及其他各種雜穀，在種植時間上與水稻交錯進行，這大大提高了土地的利用率和畝產量。由此可知，南方農業經濟發展是由於( )。", opts: [{t:"種植技術改進",c:true},{t:"社會環境安定",c:false},{t:"自然環境優越",c:false},{t:"耕作勞力充足",c:false}], exp: "a。將北方的旱作農作物引入南方，並與水稻輪作交錯種植，這屬於農業生產上「種植技術與耕作方式的改進」。" },
-        { id: '1_16', q: "16.有學者這樣描述 383 年的淝水之戰：\"這流亡政府的弱勢軍隊出人意外地打敗了前秦領袖符堅所統率的絕對優勢的北方聯軍\"。\"流亡政府\"指的是( )。", opts: [{t:"宋",c:false},{t:"東晉",c:true},{t:"齊",c:false},{t:"梁",c:false}], exp: "b。西晉滅亡後，司馬睿在建康建立東晉，相對於被五胡佔領的北方中原，東晉政權常被史學家稱為南渡的「流亡政府」。" },
-        { id: '1_17', q: "17.公元 420-589 年，中國南方政權更迭頻繁，相繼出現宋、齊、梁、陳四個王朝。這些王朝都定都於( )。", opts: [{t:"建康",c:true},{t:"開封",c:false},{t:"洛陽",c:false},{t:"西安",c:false}], exp: "a。南朝的宋、齊、梁、陳加上東吳與東晉，皆定都於建康（今江蘇南京），因此南京歷史上擁有「六朝古都」的美譽。" },
-        { id: '1_18', q: "18.中國古代有很多著名的以少勝多的戰役，下列屬於東晉十六國時期北方的統一政權前秦向南方東晉發起的以少勝多的戰役是( )。", opts: [{t:"鉅鹿之戰",c:false},{t:"淝水之戰",c:true},{t:"官渡之戰",c:false},{t:"赤壁之戰",c:false}], exp: "b。前秦王苻堅統一北方後，企圖一舉消滅東晉，雙方在淝水交戰，結果東晉憑藉堅定抵抗與敵軍指揮失誤贏得勝利。" },
-        { id: '1_19', q: "19.\"書聖\"王羲之集書法之大成，自成一家，影響深遠。他的作品《蘭亭集序》使用的書法字體是( )。", opts: [{t:"篆書",c:false},{t:"隸書",c:false},{t:"楷書",c:false},{t:"行書",c:true}], exp: "d。王羲之的《蘭亭集序》筆勢飄逸婉轉，被歷代書法家譽為「天下第一行書」，展現了東晉文人的藝術成就。" },
-        { id: '1_20', q: "20.魏晉南北朝時，隨著胡床、椅子、方凳引入內地，逐漸改變了漢族席地而坐的生活習俗。這一變化體現了( )。", opts: [{t:"政權分立的加劇",c:false},{t:"經濟重心南移的完成",c:false},{t:"民族交融的加強",c:true},{t:"勞動生產方式的改變",c:false}], exp: "c。北方少數民族（胡人）的家具與生活用品傳入中原，影響了漢人的日常起居，這是各民族在生活習俗上互相交融的具體表現。" },
-        { id: '1_21', q: "21.他力主遷都洛陽，並推行一系列漢化措施，使得北方禮樂行政、民情俗尚與漢族封建社會無異，致使江南人士有\"衣冠士族並在中原\"之歎。他是( )。", opts: [{t:"漢文帝",c:false},{t:"漢武帝",c:false},{t:"光武帝",c:false},{t:"北魏孝文帝",c:true}], exp: "d。北魏孝文帝拓跋宏極力推崇漢族文化，通過遷都與漢化政策，使鮮卑族徹底融入漢族封建體系，促進了北方的民族融合。" },
-        { id: '1_22', q: "22.淝水之戰改變了中國歷史的走向，是中國戰爭史上以少勝多的著名戰例之一。淝水之戰的交戰雙方是( )。", opts: [{t:"西晉 東晉",c:false},{t:"前秦 東晉",c:true},{t:"北魏 東晉",c:false},{t:"前秦 西晉",c:false}], exp: "b。383 年的淝水之戰，交戰雙方是氐族建立、短暫統一北方的「前秦」政權，以及退守長江以南的漢族「東晉」政權。" },
-        { id: '1_23', q: "23.三國時期出現了三足鼎立的局面其中魏國的建立者是( )。", opts: [{t:"曹操",c:false},{t:"劉備",c:false},{t:"孫權",c:false},{t:"曹丕",c:true}], exp: "d。曹操雖奠定曹魏基礎，但生前未稱帝。公元 220 年，其子曹丕正式廢漢獻帝自立，國號大魏，標誌東漢滅亡。" },
-        { id: '1_24', q: "24.下列事件按先後時序排列正確的是( )。(1)牧野之戰 (2)淝水之戰 (3)赤壁之戰 (4)官渡之戰 (5)涿鹿之戰 (6)鉅鹿之戰", opts: [{t:"(6)(5)(1)(4)(2)(3)",c:false},{t:"(1)(5)(6)(4)(3)(2)",c:false},{t:"(5)(1)(6)(4)(3)(2)",c:true},{t:"(5)(6)(1)(3)(2)(4)",c:false}], exp: "c。順序：涿鹿(傳說)>牧野(商末)>鉅鹿(秦末)>官渡(東漢末)>赤壁(東漢末)>淝水(東晉)。故選 c。" },
-        { id: '1_25', q: "25.魏晉南北朝時期的民族交融，從方式上看既有各族人民在友好交往中的相互影響，也有統治者的主動漢化。下列能體現這一時期主動\"漢化\"的是( )。", opts: [{t:"三國鼎立",c:false},{t:"八王之亂",c:false},{t:"淝水之戰",c:false},{t:"孝文帝改革",c:true}], exp: "d。北魏孝文帝改革是中國歷史上少數民族統治者「由上而下、主動推行」漢族制度與文化的典型歷史事件。" },
-        { id: '1_26', q: "26.為區別春秋戰國時期的諸侯國吳國，以及五代時期楊行密建立的吳國，史學界一般稱這個政權為孫吳...這個政權的建立者是( )。", opts: [{t:"孫權",c:true},{t:"袁紹",c:false},{t:"孫策",c:false},{t:"曹丕",c:false}], exp: "a。孫堅與孫策奠定了江東基礎，最終由孫權於公元 229 年正式在建業（南京）稱帝，建立吳國，史稱孫吳或東吳。" },
-        { id: '1_27', q: "27.東晉哪位皇帝舉行即位大典時，請王導共坐禦床，被稱為\"王與馬，共天下\"?", opts: [{t:"司馬炎",c:false},{t:"司馬睿",c:true},{t:"司馬懿",c:false},{t:"司馬昭",c:false}], exp: "b。東晉開國皇帝司馬睿（晉元帝）得益於琅琊王氏望族（王導、王敦）的鼎力支持才得以建國，因此皇權與世家大族並重。" },
-        { id: '1_28', q: "28.\"禁胡服、斷北語、改姓氏……\"北魏孝文帝改革的這些措施( )。", opts: [{t:"促進了民族交融",c:true},{t:"削弱了北魏實力",c:false},{t:"沿襲了鮮卑習俗",c:false},{t:"實現了南北統一",c:false}], exp: "a。孝文帝禁止穿鮮卑服、說鮮卑語，並改用漢姓，這些強硬的漢化政策打破了民族隔閡，極大地促進了北方民族的大融合。" },
-        { id: '1_29', q: "29.三國建立的先後順序是( )。", opts: [{t:"魏一蜀一吳",c:true},{t:"魏一吳一蜀",c:false},{t:"吳一魏一蜀",c:false},{t:"吳一蜀一魏",c:false}], exp: "a。220 年曹丕建魏；221 年劉備於成都建蜀漢；229 年孫權於建業建吳。建國順序依序為魏、蜀、吳。" },
-        { id: '1_30', q: "30.西晉，一個驟起驟滅的政權，其盛衰興亡耐人尋味。對西晉\"驟滅\"有重大影響的歷史事件是( )。", opts: [{t:"\"八王之亂\"",c:true},{t:"定都上海",c:false},{t:"\"七王之亂\"",c:false},{t:"五族內遷",c:false}], exp: "a。「八王之亂」是西晉皇族內部為爭權奪利爆發的長年內戰，嚴重耗損國家元氣，是導致西晉被少數民族迅速滅亡的主因。" },
-        { id: '1_31', q: "31.\"風聲鶴唳\"\"草木皆兵\"\"投鞭斷流\"\"東山再起\"，這些成語，其典故與一場戰爭有關。這場戰爭是( )。", opts: [{t:"官渡之戰",c:false},{t:"赤壁之戰",c:false},{t:"八王之亂",c:false},{t:"淝水之戰",c:true}], exp: "d。苻堅狂妄自稱投鞭可斷流；兵敗後逃亡，聽到風聲鶴唳、看到草木皆以為是東晉追兵。這些皆出自淝水之戰。" },
-        { id: '1_32', q: "32.曹操是我國歷史上傑出的政治家、軍事家、文學家，下列事件不是曹操所為的是( )。", opts: [{t:"迎漢獻帝到許昌，\"挾天子以令諸侯\"",c:false},{t:"官渡之戰以少勝多大敗袁紹",c:false},{t:"與孫權、劉備聯軍戰於赤壁",c:false},{t:"220 年，改國號為魏，定都洛陽",c:true}], exp: "d。曹操生前為漢相，封魏王，終身未曾稱帝。220 年篡漢稱帝、改國號為魏的是他的兒子曹丕。" },
-        { id: '1_33', q: "33.\"漢帝國崩解後，中國陷入一段黯淡無望的長期動亂時代...\"這段\"長期動亂時代\"是( )。", opts: [{t:"春秋戰國時期",c:false},{t:"三國兩晉南北朝時期",c:true},{t:"五代十國時期",c:false},{t:"夏商周時期",c:false}], exp: "b。東漢滅亡後，中國經歷了長達近 400 年的分分裂、戰亂與少數民族內遷（五胡亂華）時期，即三國兩晉南北朝。" },
-        { id: '1_34', q: "34.《三國演義》裏的\"借東風\"、\"草船借箭\"、\"連環計\"的故事...與三國鼎立局面形成的關鍵戰役有關。這場戰役是( )。", opts: [{t:"鉅鹿之戰",c:false},{t:"官渡之戰",c:false},{t:"赤壁之戰",c:true},{t:"淝水之戰",c:false}], exp: "c。這些文學橋段皆出自《三國演義》中描寫「赤壁之戰」的情節，此戰役火燒連環船，奠定了三分天下的基礎。" },
-        { id: '1_35', q: "35.假如你穿越時空隧道，回到東晉時期，不可能看到的情景是( )。", opts: [{t:"皇族政治上依靠世家大地主的扶持",c:false},{t:"祖逖北伐",c:false},{t:"東晉軍隊在淝水打敗前秦軍隊",c:false},{t:"北方地區出現\"荊揚晏安，戶口殷實\"的景象",c:true}], exp: "d。「荊揚晏安，戶口殷實」指的是長江中下游的「南方」地區（荊州、揚州）經濟繁榮，而非戰亂頻仍的北方。" },
-        { id: '1_36', q: "36.天下大勢，分久必合，合久必分。實現三國兩晉南北朝時期短暫統一的朝代是( )。", opts: [{t:"北魏",c:false},{t:"東晉",c:false},{t:"西晉",c:true},{t:"前秦",c:false}], exp: "c。在魏晉南北朝三百多年的大分裂時期中，只有「西晉」在 280 年滅吳後，實現了為期僅三十多年的短暫全國統一。" },
-        { id: '1_37', q: "37.晉建武年間，晉元帝率中原漢族臣民從京師洛陽南渡，史稱\"永嘉之亂，衣冠南渡\"...\"衣冠南渡\"直接推動了( )。", opts: [{t:"三國鼎立局面的形成",c:false},{t:"黃河流域少數民族的大交融",c:false},{t:"江南地區的大開發",c:true},{t:"成都平原成為\"天府之國\"",c:false}], exp: "c。中原士族與百姓的南遷，為南方帶來了大量勞動力與先進的生產技術，成為六朝時期「江南地區大開發」的最直接動力。" },
-        { id: '1_38', q: "38.以下哪項不是有關晉武帝恢復封建的正確描述?", opts: [{t:"鑑於曹室孤立無援",c:false},{t:"冊封同姓宗室為王",c:false},{t:"諸侯王要保衞曹室的統治",c:true},{t:"諸侯王能建立軍隊、任免官吏",c:false}], exp: "c。晉武帝大封同姓（司馬氏）為王，目的是為了讓宗室藩王擁有軍權來保衛「司馬氏」（晉朝皇室）的統治，而非曹室。" },
-        { id: '1_39', q: "39.魏晉南北朝時期，下列哪一個少數民族曾經統一過北方?", opts: [{t:"匈奴",c:false},{t:"氐",c:true},{t:"羌",c:false},{t:"羯",c:false}], exp: "b。十六國時期，由「氐族」領袖苻堅建立的前秦政權，曾任用漢人王猛為相，消滅北方群雄，短暫統一了黃河流域。" },
-        { id: '1_40', q: "40.\"南朝\"四個朝代的先後順序依次是( )。", opts: [{t:"宋、梁、齊、陳",c:false},{t:"宋、齊、梁、陳",c:true},{t:"梁、陳、宋、齊",c:false},{t:"齊、陳、宋、梁",c:false}], exp: "b。東晉滅亡後，南方自 420 年起相繼經歷了劉宋、南齊、南梁、南陳四個政權，合稱南朝，順序為宋、齊、梁、陳。" }
-    ],
-    'bank2': [
-        { id: '2_1', q: "1.隋文帝在位期間，政治清明，安定繁盛，史稱甚麼?", opts: [{t:"貞觀之治",c:false},{t:"開皇之治",c:true},{t:"文景之治",c:false},{t:"光武中興",c:false}], exp: "b。隋文帝楊堅年號「開皇」，他在位期間推行均田制、改革吏治，使國家經濟迅速繁榮，史稱「開皇之治」。" },
-        { id: '2_2', q: "2.隋朝建立的方式是通過( )。", opts: [{t:"少數民族入侵中原",c:false},{t:"大將發動政變自立",c:false},{t:"外戚奪取政權",c:true},{t:"農民起義",c:false}], exp: "c。楊堅原為北周靜帝的外祖父，他憑藉「外戚」身份掌控朝政，最終逼迫年幼的皇帝禪讓，篡奪政權建立隋朝。" },
-        { id: '2_3', q: "3.隋文帝推行以下哪一項措施，增加了國庫收入?", opts: [{t:"清查隱戶",c:true},{t:"減輕賦稅",c:false},{t:"提倡節險",c:false},{t:"開科取士",c:false}], exp: "a。隋文帝推行「大索貌閱」，嚴格清查逃漏戶籍的隱戶，將大量人口重新納入國家徵稅體系，大幅增加了國庫收入。" },
-        { id: '2_4', q: "4.隋唐時期，江都(今揚州)發展較快，經濟地位日益重要。當時江都經濟地位上升得益於( )。", opts: [{t:"隋煬帝乘龍舟巡遊江都",c:false},{t:"大運河以其為中心",c:false},{t:"位於運河與長江交匯之地",c:true},{t:"經濟重心開始南移",c:false}], exp: "c。揚州（江都）地處江南運河與長江水道的交匯樞紐，水上交通極為便利，使其迅速發展為當時重要的商業中心。" },
-        { id: '2_5', q: "5.隋文帝推行以下哪兩級的地方制度? (1)州 (2)縣 (3)郡 (4)省", opts: [{t:"(1)(2)",c:true},{t:"(1)(4)",c:false},{t:"(2)(3)",c:false},{t:"(3)(4)",c:false}], exp: "a。為了精簡機構、提高地方行政效率，隋文帝廢除了郡，將地方制度由州、郡、縣三級改為「州、縣」兩級制。" },
-        { id: '2_6', q: "6.以下何者為隋末爆發大規模民變的原因? (1)高麗大舉入侵 (2)隋煬帝役民過甚 (3)李淵攻陷大興 (4)災荒嚴重", opts: [{t:"(1)(3)",c:false},{t:"(2)(4)",c:true},{t:"(1)(2)(4)",c:false},{t:"(2)(3)(4)",c:false}], exp: "b。隋煬帝大興土木、屢次征伐高麗導致「役民過甚」，加上黃河中下游一帶「災荒嚴重」，逼使走投無路的農民起義。" },
-        { id: '2_7', q: "7.\"上品無寒門，下品無世族。\"的情況可能出現下列哪個朝代?", opts: [{t:"魏晉南北朝",c:true},{t:"隋朝",c:false},{t:"明朝",c:false},{t:"唐朝",c:false}], exp: "a。此語形容魏晉南北朝時期推行「九品中正制」，導致世家大族壟斷官職，平民子弟無晉升管道的門閥政治現象。" },
-        { id: '2_8', q: "8.科舉，就是由國家設立科目，定期舉行統一考試，通過考試來選拔官吏。下列事件標誌着科舉制度正式誕生?", opts: [{t:"隋文帝時利用分科取士的辦法選拔官吏",c:false},{t:"隋煬帝時正式設進士科，按考試成績選拔人才",c:true},{t:"唐太宗時擴充國學的規模，擴建學舍，增加學員",c:false},{t:"武則天時開始進行武舉考試",c:false}], exp: "b。隋煬帝大業年間正式設立「進士科」，以考試文章成績選拔官員，徹底打破門第限制，標誌著科舉制的正式誕生。" },
-        { id: '2_9', q: "9.有人說：\"隋朝，猶如一顆流星劃過歷史的夜空，時間雖然短卻光芒四射。\"下列對\"光芒四射\"的理解不正確的是( )。", opts: [{t:"使南北重新統一",c:false},{t:"隋煬帝的勵精圖治",c:true},{t:"隋煬帝時科舉制度正式形成",c:false},{t:"大運河是古代世界上最長的運河",c:false}], exp: "b。隋朝光芒在於統一、大運河與科舉。但隋煬帝晚年好大喜功、窮兵黷武、生活奢侈，並非「勵精圖治」。" },
-        { id: '2_10', q: "10.”罄南山之竹書罪無窮，決東海之波流惡難盡。”隋末起義軍發佈的檄文痛斥的是( )。", opts: [{t:"隋煬帝",c:true},{t:"唐太宗",c:false},{t:"宋太祖",c:false},{t:"明太祖",c:false}], exp: "a。瓦崗軍首領李密發布檄文，用「罄竹難書」形容隋煬帝楊廣的罪行極多，竹簡寫不完、東海之水也洗不淨。" },
-        { id: '2_11', q: "11.據《隋書》記載：\"...而帝（隋煬帝）惡直言，仇諫士，其能久乎！\"材料認為隋朝迅速滅亡的原因是( )。", opts: [{t:"隋朝賦稅徭役繁重",c:false},{t:"隋煬帝剛愎自用",c:true},{t:"統治階層奢侈享樂",c:false},{t:"大運河消耗國力",c:false}], exp: "b。文言文引述隋煬帝「惡直言，仇諫士」（厭惡忠言，仇視勸諫的大臣），直指其剛愎自用、拒絕納諫是亡國主因。" },
-        { id: '2_12', q: "12.”盡道隋亡為此河，至今千里賴通波。若無水殿龍舟事，共禹論功不較多。”下列關於這首詩理解正確的是( )。", opts: [{t:"讚揚了大運河加強了南北交通",c:true},{t:"詩人認為，隋滅亡是因為開鑿大運河",c:false},{t:"大運河的開通實現了我國南水北調",c:false},{t:"大運河溝通了長江水系和珠江水系",c:false}], exp: "a。皮日休的詩客觀評價了大運河，認為它雖然伴隨勞民傷財，但長遠來看「千里賴通波」，極大加強了南北交通與經濟交流。" },
-        { id: '2_13', q: "13.”安居不用架高堂，書中自有黃金屋。””男兒欲遂平生志，勤向窗前讀六經。”上述兩句詩所描述的現象最早發生於( )。", opts: [{t:"魏晉南北朝",c:false},{t:"隋朝",c:false},{t:"唐朝",c:false},{t:"宋朝",c:true}], exp: "b。詩句鼓勵男兒透過讀書考試來改變命運（做官發財），這種現象起因於「科舉制度」的創立，而科舉制最早源於隋朝。" },
-        { id: '2_14', q: "14.”將錄取的重心落到了‘才‘上而非‘門第‘上，從而將全國精英吸到了國家管理網路中，最大限度地擴大了統治的基礎。”這句話評價的是( )。", opts: [{t:"禪讓制",c:false},{t:"分封制",c:false},{t:"科舉制",c:true},{t:"郡縣制",c:false}], exp: "c。科舉制廢除了以出身門第為標準的九品中正制，改以「才學考試」錄取官員，促使平民菁英得以進入政府體系。" },
-        { id: '2_15', q: "15.《資治通鑒》稱隋文帝：”其自奉養，務為儉素，乘輿禦物，故弊者隨宜補用。”由此可見，隋文帝( )。", opts: [{t:"崇尚節儉",c:true},{t:"生活奢侈",c:false},{t:"重視農業",c:false},{t:"整頓吏治",c:false}], exp: "a。史書記載隋文帝自身生活極為簡樸（務為儉素），連車馬器物破舊了都只是隨便修補繼續用，體現其「崇尚節儉」。" },
-        { id: '2_16', q: "16.”儘管這項工程耗資巨大，但是解決了中國南北交通不便問題，而且為統一中國，穩定社會，促進南北地區政治、經濟和文化交流奠定了堅實基礎。\"這項工程是（ ）。", opts: [{t:"都江堰",c:false},{t:"隋唐大運河",c:true},{t:"明長城",c:false},{t:"紫禁城",c:false}], exp: "b。隋煬帝開鑿的大運河雖然當時耗費巨大人力物力，但它成功貫通了五大水系，成為古代中國南北交通的大動脈。" },
-        { id: '2_17', q: "17.人們稱武則天的統治是\"政啟開元，治宏貞觀。\"這裏的\"貞觀\"、\"開元\"年號分別屬於( )。", opts: [{t:"唐高祖、唐太宗",c:false},{t:"唐太宗、唐玄宗",c:true},{t:"唐太宗、武則天",c:false},{t:"武則天、唐玄宗",c:false}], exp: "b。「貞觀」是唐太宗的年號，開啟了貞觀之治；「開元」是唐玄宗前期的年號。武則天的統治承上啟下，功不可沒。" },
-        { id: '2_18', q: "18.\"貞觀之治\"出現的根本原因是( )。", opts: [{t:"輕徭薄賦，發展生產",c:false},{t:"汲取隋亡的教訓，調整統治政策",c:true},{t:"虛心納諫",c:false},{t:"減輕農民的負擔",c:false}], exp: "b。唐太宗親歷隋朝覆滅，深知「水能載舟，亦能覆舟」，因此調整統治政策（包括輕徭薄賦、納諫等）是盛世的根本原因。" },
-        { id: '2_19', q: "19.一位青年武藝高強，尤擅於騎射，後被當地州官選送參加武舉考試，結果考中。此事可能發生在哪位皇帝統治時期?", opts: [{t:"隋文帝",c:false},{t:"隋煬帝",c:false},{t:"唐高祖",c:false},{t:"武則天",c:true}], exp: "d。為選拔軍事人才，武則天統治時期首創了「武舉」制度，考核考生的騎射、舉重等軍事技能。" },
-        { id: '2_20', q: "20.唐玄宗時，甚麼人負責統領邊區兵鎮?", opts: [{t:"刺史",c:false},{t:"州牧",c:false},{t:"兵部尚書",c:false},{t:"節度使",c:true}], exp: "d。為鞏固邊防，唐玄宗在邊境設立十大兵鎮，並委任「節度使」統領，賦予軍政財大權，導致後來外重內輕的局面。" },
-        { id: '2_21', q: "21.安史之亂期間，唐玄宗逃難到馬嵬驛，發生了甚麼事件?", opts: [{t:"楊國忠殺死安祿山",c:false},{t:"軍士策動兵變，唐玄宗被廢",c:false},{t:"唐軍收復洛陽",c:false},{t:"軍士譁變，殺死楊國忠",c:true}], exp: "d。安史叛軍逼近長安，唐玄宗逃往四川。途經馬嵬驛時隨行護軍譁變，殺死宰相楊國忠，並逼迫玄宗賜死楊貴妃。" },
-        { id: '2_22', q: "22.安史之亂期間，唐肅宗借助哪個少數民族的援兵平定叛亂?", opts: [{t:"回紇",c:true},{t:"吐蕃",c:false},{t:"匈奴",c:false},{t:"大理",c:false}], exp: "a。為迅速平息安史之亂、收復長安與洛陽，唐肅宗向西北的少數民族「回紇」（回鶻）借兵援助。" },
-        { id: '2_23', q: "23.安史之亂後，唐室主要對藩鎮採取甚麼政策?", opts: [{t:"分化",c:false},{t:"武力攻伐",c:false},{t:"姑息",c:true},{t:"招降",c:false}], exp: "c。安史之亂後唐朝中央軍力衰弱，對手握重兵的節度使無力鎮壓，只能採取妥協讓步的「姑息」政策，導致藩鎮割據。" },
-        { id: '2_24', q: "24.唐末民變中，以何者的起事聲勢最大?", opts: [{t:"李克用",c:false},{t:"黃巢",c:true},{t:"王仙芝",c:false},{t:"裘甫",c:false}], exp: "b。唐末爆發黃巢之亂，黃巢大軍流竄大半個中國，甚至一度攻陷首都長安稱帝，給唐朝統治帶來了毀滅性的打擊。" },
-        { id: '2_25', q: "25.唐朝滅亡後形成的分裂局面稱為甚麼?", opts: [{t:"春秋戰國",c:false},{t:"三國鼎立",c:false},{t:"南北朝",c:false},{t:"五代十國",c:true}], exp: "d。公元 907 年唐朝滅亡後，中國進入了北方中原五個朝代更迭、南方及周邊十個割據政權並存的「五代十國」時期。" },
-        { id: '2_26', q: "26.五代國祚短促的主要原因是甚麼?", opts: [{t:"外戚專權",c:false},{t:"篡弒頻仍",c:true},{t:"少數民族入侵",c:false},{t:"民變四起",c:false}], exp: "b。五代時期武將專權，軍隊擁立主帥發動兵變奪取皇位（篡弒）成為常態，導致政權頻繁更迭，每個朝代皆十分短命。" },
-        { id: '2_27', q: "27.五代的統治範畔主要位於哪裡?", opts: [{t:"珠江流域",c:false},{t:"長江流域",c:false},{t:"黃河流域",c:true},{t:"淮河流域",c:false}], exp: "c。五代（後梁、唐、晉、漢、周）皆以中原地區為統治核心，都城多在汴州或洛陽，版圖主要集中在「黃河流域」。" },
-        { id: '2_28', q: "28.五代時期，石敬瑭割讓何處給契丹，以致構成嚴重邊患?", opts: [{t:"燕雲之地",c:true},{t:"長安",c:false},{t:"洛陽",c:false},{t:"開封",c:false}], exp: "a。後晉建立者石敬瑭為求契丹出兵相助，將戰略重地「燕雲十六州」割讓，使中原失去北方天然屏障，國防門戶洞開。" },
-        { id: '2_29', q: "29.五代開國君主的出身有何共通之處?", opts: [{t:"均屬前朝的文臣",c:false},{t:"都是沙陀族的首領",c:false},{t:"都是皇族子弟",c:false},{t:"均屬前朝的節度使",c:true}], exp: "d。五代的開國皇帝（如朱溫、李存勗等）在建國稱帝前，皆為掌握地方軍政大權的「藩鎮節度使」。" },
-        { id: '2_30', q: "30.以下哪個朝代最終結束了唐末以來的分裂局面?", opts: [{t:"後周",c:false},{t:"後漢",c:false},{t:"後梁",c:false},{t:"北宋",c:true}], exp: "d。公元 960 年，趙匡胤建立北宋，隨後採取「先南後北」戰略消滅南方各國，基本結束了五代十國的分裂局面。" },
-        { id: '2_31', q: "31.\"天下大勢，分久必合，合久必分。\"907 年，唐朝滅亡以後進入的分裂時期是( )。", opts: [{t:"春秋時期",c:false},{t:"戰國時期",c:false},{t:"南北朝時期",c:false},{t:"五代十國時期",c:true}], exp: "d。907 年朱溫篡唐，標誌著大一統的唐朝滅亡，中國進入了長達半個多世紀的「五代十國」軍閥割據分裂時期。" },
-        { id: '2_32', q: "32.唐朝末年，翰林學士劉允章在《直諫書》中指出老百姓有\"官吏苛刻\"\"賦稅繁多\"...等\"八苦\"。上述材料反映的應該是( )。", opts: [{t:"安史之亂爆發的原因",c:false},{t:"唐末農民起義爆發的原因",c:true},{t:"藩鎮節度使擁兵自重的原因",c:false},{t:"五代十國時期政局動盪的原因",c:false}], exp: "b。材料具體描述了唐末政治腐敗、賦稅沉重導致百姓走投無路的慘狀，這是逼迫農民揭竿起義（如黃巢之亂）的根本原因。" },
-        { id: '2_33', q: "33.趙翼在《廿二史劄記》中記載：\"五代諸鎮節度使，未有不用勳臣武將者⋯⋯五代之亂...甚於盜賊...\"五代時期這種局面的實質是( )。", opts: [{t:"階級矛盾尖銳",c:false},{t:"宦官專權的結果",c:false},{t:"民族政權並立",c:false},{t:"藩鎮割據的延續",c:true}], exp: "d。五代時期武將（節度使）無視朝廷法紀、擁兵自重、割據稱雄的現象，本質上就是唐中後期「藩鎮割據」局面的延續與惡化。" },
-        { id: '2_34', q: "34.唐玄宗統治後期，一場叛亂揭開唐中央政府和地方割據勢力之間爭鬥的序幕。此叛亂( )。", opts: [{t:"是藩鎮割據局面的延續",c:false},{t:"促使唐朝由盛轉衰",c:true},{t:"打破了統一的歷史潮流",c:false},{t:"最終導致唐朝滅亡",c:false}], exp: "b。安史之亂嚴重破壞了北方社會經濟，大幅削弱了唐朝中央政府的權威，是唐朝由盛世走向衰落的歷史轉折點。" },
-        { id: '2_35', q: "35.唐末農民起義軍領袖黃巢作詩雲：\"沖天香陣透長安；滿城盡帶黃金甲。\"黃巢領導的唐末農民起義( )。", opts: [{t:"直接推翻了唐朝的統治",c:false},{t:"給唐朝統治者施以致命打擊",c:true},{t:"形成了五代十國的局面",c:false},{t:"促使唐朝國勢從此由盛轉衰",c:false}], exp: "b。黃巢起義雖最終被鎮壓（未能直接推翻唐朝），但摧毀了唐朝的統治根基，給予唐朝「致命打擊」，加速其滅亡。" },
-        { id: '2_36', q: "36.五代十國時期，吳越境內錢塘江一帶遭到海潮入侵，萬畝農田被淹。吳越國王錢鏐組織人力修築海塘堤壩...這反映了( )。", opts: [{t:"藩鎮林立局面難以抵禦災害",c:false},{t:"人口大批南遷引發環境問題",c:false},{t:"政局相對穩定促進經濟發展",c:true},{t:"經濟重心已經轉移到了南方",c:false}], exp: "c。吳越國位於南方，未受中原大戰亂波及。統治者致力於水利建設，說明南方「政局相對穩定」，有利於促進地方經濟開發。" },
-        { id: '2_37', q: "37.唐前期，關中261個軍府擁兵26萬，約占40%。唐玄宗天寶年間設置了...十鎮兵力駐軍約49萬人，約佔86%。唐玄宗的這一舉措( )。", opts: [{t:"體現內重外輕的佈局",c:false},{t:"為唐朝衰落埋下隱患",c:true},{t:"遏制了邊疆地區叛亂",c:false},{t:"有利於維護國家統一",c:false}], exp: "b。邊鎮兵力佔全國 86%，中央兵力空虛，形成嚴重的「外重內輕」軍事格局，最終讓安祿山有可乘之機，為衰落埋下隱患。" },
-        { id: '2_38', q: "38.要讀懂唐朝，先要讀懂安史之亂。戰爭的創傷，成為唐人難以治癒的心靈之痛。唐朝\"安史之亂\"爆發的根本原因是( )。", opts: [{t:"唐朝內地兵力空虛",c:false},{t:"北方少數民族的南擾",c:false},{t:"安祿山企圖奪取唐中央政權",c:false},{t:"唐玄宗統治後期，政治腐敗",c:true}], exp: "d。唐玄宗晚年貪圖享樂、任用奸相楊國忠，導致朝政極度腐敗，這是引發安史之亂、國家陷入危機的「根本原因」。" },
-        { id: '2_39', q: "39.唐朝後期，統治腐朽，宦官專權，藩鎮割據的態勢越來越嚴重，中央已無力控制藩鎮，907 年，唐朝至此滅亡。滅亡唐朝的人是( )。", opts: [{t:"朱溫",c:true},{t:"趙構",c:false},{t:"黃巢",c:false},{t:"趙匡胤",c:false}], exp: "a。原黃巢部將、後降唐的宣武節度使「朱溫」，於 907 年逼迫唐哀帝禪讓，建立後梁，正式宣告唐朝滅亡。" },
-        { id: '2_40', q: "40.後梁、後唐、後晉、後漢、後周政權更迭局面的實質是( )。", opts: [{t:"階級矛盾尖銳",c:false},{t:"宦官專權的結果",c:false},{t:"民族政權並立",c:false},{t:"藩鎮割據的延續",c:true}], exp: "d。這五個朝代的開國君主皆為前朝手握重兵的節度使，他們的互相攻伐與篡位，實質上就是唐末「藩鎮割據」現象的延續。" }
-    ],
-    'bank3': [
-        { id: '3_1', q: "1.與北宋簽訂\"澶淵之盟\"的少數民族政權是( )。", opts: [{t:"西夏",c:false},{t:"金",c:false},{t:"遼",c:true},{t:"元",c:false}], exp: "c。公元 1005 年，北宋與契丹族建立的「遼」政權在澶州僵持後達成和議，簽訂了維持百餘年和平的「澶淵之盟」。" },
-        { id: '3_2', q: "2.遼、宋、西夏、金時期的政治特點是( )。", opts: [{t:"地方軍閥割據",c:false},{t:"南北政權對峙",c:false},{t:"民族政權並立",c:true},{t:"戰亂長期不息",c:false}], exp: "c。這段時期中原漢族政權（兩宋）與周邊少數民族政權（遼、西夏、金）同時存在、互相抗衡，呈現「民族政權並立」的格局。" },
-        { id: '3_3', q: "3.婦女纏足的陋習逐漸傳開是在( )。", opts: [{t:"晉朝",c:false},{t:"隋朝",c:false},{t:"唐朝",c:false},{t:"宋朝",c:true}], exp: "d。纏足陋習起源於五代，但在「宋朝」理學興起、禮教漸趨保守的背景下，開始在士大夫與民間廣泛傳開。" },
-        { id: '3_4', q: "4.公元 960 年，後周禁軍統帥趙匡胤被部下黃袍加身，擁立為帝，史稱這件事為甚麼?", opts: [{t:"”澶淵之盟”",c:false},{t:"”玄武門之變”",c:false},{t:"”陳橋兵變”",c:true},{t:"”杯酒釋兵權”",c:false}], exp: "c。趙匡胤率軍北上時，在陳橋驛被部將披上黃袍擁立為天子，隨即回師奪權建立北宋，史稱「陳橋兵變」。" },
-        { id: '3_5', q: "5.\"秦皇漢武，唐宗宋祖\"都是中國歷史上有名的皇帝，其中建立北宋的\"宋祖\"是( )。", opts: [{t:"劉備",c:false},{t:"元昊",c:false},{t:"忽必烈",c:false},{t:"趙匡胤",c:true}], exp: "d。「宋祖」指的是宋太祖趙匡胤，他發動陳橋兵變結束五代十國的分裂，是北宋的開國皇帝。" },
-        { id: '3_6', q: "6.宋太祖實行\"杯酒釋兵權\"的目的是甚麼?", opts: [{t:"加強地方軍力",c:false},{t:"防禦少數民族進侵",c:false},{t:"集中行政權",c:false},{t:"解除功臣的兵權",c:true}], exp: "d。為防範武將仿效自己發動兵變篡位，宋太祖透過設宴請客的方式，和平解除了禁軍高級將領（功臣）的兵權，加強皇權。" },
-        { id: '3_7', q: "7.宋初以\"重文輕武\"為國策，大量提拔文人擔任官職，這些受到提拔的人主要來源於( )。", opts: [{t:"開國功臣",c:false},{t:"科舉考試",c:true},{t:"皇親國戚",c:false},{t:"地方推薦",c:false}], exp: "b。北宋大幅擴充「科舉考試」的錄取名額，讓大量無背景的文人學者通過考試進入官僚體系，以落實重文輕武的國策。" },
-        { id: '3_8', q: "8.以下哪項不是北宋中央集權政策所產生的影響?", opts: [{t:"地方無力發展",c:false},{t:"提升軍力",c:true},{t:"行政效率下降",c:false},{t:"冗員充斥",c:false}], exp: "b。北宋將精兵財權收歸中央（強幹弱枝），導致地方軍力空虛、防禦力下降，因此「提升軍力」不是其影響。" },
-        { id: '3_9', q: "9.以下描繪了北宋都城汴京日常社會生活與習俗風情的作品是( )。", opts: [{t:"張澤端《清明上河圖》",c:true},{t:"蘇軾《念奴嬌.赤壁懷古》",c:false},{t:"顧愷之的《女史箴圖》",c:false},{t:"唐玄宗的《霓裳羽衣舞》",c:false}], exp: "a。北宋畫家張擇端的《清明上河圖》，生動細緻地描繪了北宋首都汴京（開封）汴河沿岸繁榮的商業與市井生活。" },
-        { id: '3_10', q: "10.北宋時期，以下何者負責將地方賦稅解送京師?", opts: [{t:"知州",c:false},{t:"轉運使",c:true},{t:"三司使",c:false},{t:"尚書",c:false}], exp: "b。為剝奪地方割據的財政基礎，北宋在各路設立「轉運使」，專門負責將地方的大部分賦稅財政轉運至中央國庫。" },
-        { id: '3_11', q: "11.下列事件表時間先後順序排列正確的是( )。 (1)郾城大捷 (2)陳橋兵變 (3)澶淵之盟 (4)成吉思汗統一蒙古", opts: [{t:"(2)(1)(4)(3)",c:false},{t:"(2)(3)(1)(4)",c:true},{t:"(3)(1)(2)(4)",c:false},{t:"(3)(2)(4)(1)",c:false}], exp: "b。(2)兵變建宋(960) > (3)澶淵盟約(1005) > (1)南宋郾城抗金(1140) > (4)鐵木真統一蒙古(1206)。" },
-        { id: '3_12', q: "12.X 時，遼軍進佔澶州，威脅京師，宰相 Y 力主抵抗。X 和 Y 分別指誰人?", opts: [{t:"宋太宗;趙普",c:false},{t:"宋真宗;寇準",c:true},{t:"宋真宗;李元昊",c:false},{t:"宋神宗;王安石",c:false}], exp: "b。1004 年遼軍大舉南下逼近澶州，北宋皇帝「宋真宗」欲逃跑，在主戰派宰相「寇準」極力勸諫下才御駕親征。" },
-        { id: '3_13', q: "13.以下哪項有關\"澶淵之盟\"的描述是錯誤的?", opts: [{t:"宋室每年給遼大量銀絹",c:false},{t:"為宋遼兩國訂立的盟約",c:false},{t:"宋室答應割讓燕雲之地給遼",c:true},{t:"開創宋室以歲幣向少數民族求和的先例",c:false}], exp: "c。燕雲十六州早在五代時已被石敬瑭割讓給契丹，澶淵之盟約定宋每年給予遼歲幣，但並無「割讓燕雲之地」的條款。" },
-        { id: '3_14', q: "14.\"暖風吹得遊人醉，直把杭州作汴州。\"詩中的\"杭州\" 在當時的名稱是( )。", opts: [{t:"東京",c:false},{t:"應天",c:false},{t:"建康",c:false},{t:"臨安",c:true}], exp: "d。南宋偏安江南，將杭州作為臨時首都，稱為「臨安」。詩句諷刺南宋統治者沉迷享樂，忘卻了收復故都汴州（開封）。" },
-        { id: '3_15', q: "15.岳飛《滿江紅》中有\"壯志饑餐胡虜肉，笑談渴飲匈奴血\"一句。這裏的\"匈奴\"指的是( )。", opts: [{t:"蒙古族",c:false},{t:"契丹族",c:false},{t:"女真族",c:true},{t:"党項族",c:false}], exp: "c。岳飛是南宋抗金名將，「匈奴/胡虜」在此是古代詩詞中對外族的泛稱與借代，實際上指的是入侵中原的「女真族」（金國）。" },
-        { id: '3_16', q: "16.決定宋金對峙局面最終形成的事件是( )。", opts: [{t:"\"靖康之禍\"",c:false},{t:"\"紹興和議\"",c:true},{t:"南宋的建立",c:false},{t:"金把都城遷到燕京",c:false}], exp: "b。1141 年，南宋與金國簽訂「紹興和議」，劃分疆界並向金稱臣納貢。此和議標誌著宋金長期南北對峙局面的確立。" },
-        { id: '3_17', q: "17.一位南宋抗金名將認為\"文臣不愛錢，武臣不惜死，天下便可太平\"，這位名將是( )。", opts: [{t:"文天祥",c:false},{t:"陸秀夫",c:false},{t:"岳飛",c:true},{t:"韓世忠",c:false}], exp: "c。這是南宋名將「岳飛」治軍為官的核心信念。他率領的岳家軍紀律嚴明，屢敗金兵，深受百姓愛戴與敵人敬畏。" },
-        { id: '3_18', q: "18.以下哪項不是宋高宗停止北伐的原因?", opts: [{t:"擔心欽宗回朝復位",c:false},{t:"欲與金國議和",c:false},{t:"擔心北伐耗損國力",c:true},{t:"猜忌岳飛等將領功高權重",c:false}], exp: "c。宋高宗急於收兵議和，主因是擔心迎回被擄的哥哥欽宗會威脅皇位，且猜忌武將兵權過重，而非出於對國力耗損的擔憂。" },
-        { id: '3_19', q: "19.岳飛墓前\"青山有幸埋忠骨，白鐵無辜鑄佞(粵音「令」)臣”的對聯中，\"佞臣\"是指( )。", opts: [{t:"趙高",c:false},{t:"秦檜",c:true},{t:"楊國忠",c:false},{t:"李林甫",c:false}], exp: "b。「佞臣」指的是以「莫須有」罪名陷害忠良岳飛的南宋主和派宰相「秦檜」。後人鑄造其跪像於岳飛墓前以示唾罵。" },
-        { id: '3_20', q: "20.忽必烈建立大元後，派使者南下的目的是( )。", opts: [{t:"聯合大理進攻南宋",c:false},{t:"與南宋商議聯合滅金之事",c:false},{t:"索取歲幣",c:true},{t:"俘擄南宋君主",c:false}], exp: "b。聯宋滅金發生在窩闊台/蒙哥時期，忽必烈南下是為消滅南宋。但若針對題庫常見的選項設計邏輯，此題通常解題傾向於聯宋滅金。" },
-        { id: '3_21', q: "21.公元 1140 年，岳家軍在何處擊潰金將兀朮的精兵?", opts: [{t:"郾城",c:true},{t:"符離",c:false},{t:"采石",c:false},{t:"朱仙鎮",c:false}], exp: "a。1140 年，岳飛率領岳家軍在「郾城」大敗金將完顏宗弼（金兀朮）的精銳騎兵拐子馬，取得抗金的重大勝利。" },
-        { id: '3_22', q: "22.南宋疆域比北宋疆域明顯減少的直接原因是( )。", opts: [{t:"宋遼和議",c:false},{t:"宋夏和議",c:false},{t:"宋金和議",c:true},{t:"金滅遼",c:false}], exp: "c。南宋與金國簽訂的「紹興和議」（宋金和議）以淮水至大散關為界，導致南宋失去了黃河流域廣大的中原領土。" },
-        { id: '3_23', q: "23.穿越時空的隧道回到宋代，下列情景你不可能看到的是( )。", opts: [{t:"士大夫在酒樓上吃東坡肉",c:false},{t:"商人出門坐轎子",c:false},{t:"市民到娛樂場所瓦舍聽評書",c:false},{t:"老百姓普遍穿絲綢做的衣服",c:true}], exp: "d。古代絲綢價格昂貴，主要為達官貴人所穿。平民百姓（布衣）多穿麻布或後期的棉布衣服，「普遍穿絲綢」不符史實。" },
-        { id: '3_24', q: "24.北宋末年，X 統一女真各部，並建立 Y。X 和 Y 分別是甚麼?", opts: [{t:"李元昊;西夏",c:false},{t:"耶律德光;遼國",c:false},{t:"耶律德光;金國",c:false},{t:"完顏阿骨打;金國",c:true}], exp: "d。1115 年，女真族首領「完顏阿骨打」統一女真各部並稱帝，建立「金國」，隨後迅速崛起並滅亡了遼與北宋。" },
-        { id: '3_25', q: "25.宋聯合哪個少數民族政權攻滅遼國?", opts: [{t:"金國",c:true},{t:"西夏",c:false},{t:"大理",c:false},{t:"吐蕃",c:false}], exp: "a。北宋末年為收復燕雲十六州，與女真族建立的「金國」簽訂「海上之盟」，雙方約定南北夾擊攻滅了契丹族的遼國。" },
-        { id: '3_26', q: "26.楊家將的故事，在中國流傳很廣。楊家將抗擊的是( )。", opts: [{t:"遼",c:true},{t:"西夏",c:false},{t:"金",c:false},{t:"元",c:false}], exp: "a。楊家將（楊業及其子孫）是北宋初年的著名軍事家族，他們主要活躍於雁門關等北部邊境，長期負責抗擊「遼國」南侵。" },
-        { id: '3_27', q: "27.在美麗的西子湖畔，曾有一位姓秦的讀書人來到一座英雄墓前...\"自從賊後不名檜，我到墳前愧姓秦。\"這位讀書人為了何事發出這種感慨? ( )。", opts: [{t:"文天祥寧死不屈",c:false},{t:"王彥抗金",c:false},{t:"秦檜謀殺岳飛",c:true},{t:"噶爾丹叛亂",c:false}], exp: "c。清代狀元秦澗泉來到杭州岳王廟前，看見陷害忠良的「秦檜」夫婦跪像，為自己與奸臣同姓感到羞恥而寫下此詩。" },
-        { id: '3_28', q: "28.以下何者有關\"紹興和議\"內容是不正確的? (1)金向宋稱臣 (2)宋每年給金大量銀絹 (3)宋、金兩國以長江為東邊邊界 (4)宋、金兩國以大散關為西邊邊界", opts: [{t:"(1)(3)",c:true},{t:"(1)(4)",c:false},{t:"(2)(3)",c:false},{t:"(2)(4)",c:false}], exp: "a。和議中是「宋向金稱臣」（(1)錯）；兩國東部邊界是「淮水」而非長江（(3)錯）。因此(1)與(3)為不正確的描述。" },
-        { id: '3_29', q: "29.世界上最早的紙幣出現於我國古代什麼時期?", opts: [{t:"隋朝",c:false},{t:"明朝",c:false},{t:"北宋",c:true},{t:"元朝",c:false}], exp: "c。北宋前期，四川地區商業繁榮但鐵錢笨重不便攜帶，因此當地商人聯合發行了世界上最早的紙幣「交子」。" },
-        { id: '3_30', q: "30.中國以省為地方行政單位始於( )。", opts: [{t:"唐朝",c:false},{t:"宋朝",c:false},{t:"明朝",c:false},{t:"元朝",c:true}], exp: "d。元朝疆域空前遼闊，為了加強中央對地方的有效控制，實行「行中書省」制度（簡稱行省制），開創了中國省制的先河。" },
-        { id: '3_31', q: "31.元朝將人民分為哪四個等級? (1)漢人 (2)南人 (3)西域人 (4)色目人 (5) 蒙古人", opts: [{t:"(1)(2)(3)(4)",c:false},{t:"(1)(2)(4)(5)",c:true},{t:"(1)(3)(4)(5)",c:false},{t:"(2)(3)(4)(5)",c:false}], exp: "b。元朝實行民族歧視的四等人制，將全國人口由高至低依序分為：(5)蒙古人、(4)色目人、(1)漢人與(2)南人。" },
-        { id: '3_32', q: "32.X 統一蒙古各部後，被尊稱為成吉思汗。X 是指何者?", opts: [{t:"趙匡胤",c:false},{t:"趙構",c:false},{t:"蒙哥",c:false},{t:"鐵木真",c:true}], exp: "d。1206 年，蒙古首領「鐵木真」統一了蒙古草原各部族，被尊崇為「成吉思汗」（意指擁有海洋四方的大地之王）。" },
-        { id: '3_33', q: "33.下列哪項是元朝實行高壓統治的原因?", opts: [{t:"仿效漢人統治政策",c:false},{t:"爭取漢人支持新政權",c:false},{t:"元朝疆域遼闊",c:false},{t:"維護蒙古人的統治地位",c:true}], exp: "d。元朝作為少數民族政權，人口較少。為了防範廣大被征服族群（尤其是漢人）的反抗，「維護蒙古貴族的統治地位」，因而推行高壓的四等人制。" },
-        { id: '3_34', q: "34.為何元末會發生大規模民變?", opts: [{t:"金兵大舉南侵",c:false},{t:"蒙古將領策動民變",c:false},{t:"軍隊發動兵變",c:false},{t:"元政府救災不力",c:true}], exp: "d。元末貪官橫行，加上黃河連年決口水患，而「元政府救災不力」且強迫數十萬百姓修河，極大地激化民怨，引爆紅巾軍起義。" },
-        { id: '3_35', q: "35.元朝定都於下列哪一個地方?", opts: [{t:"開封",c:false},{t:"臨安",c:false},{t:"洛陽",c:false},{t:"大都",c:true}], exp: "d。元世祖忽必烈建立元朝後，為便於統治中原，將首都從漠北的燕京（後改名）遷至「大都」（今北京），成為全國政治中心。" },
-        { id: '3_36', q: "36.李先生的祖先世代居住於長江以南的漢人，元朝時期按照規定他祖先屬於( )。", opts: [{t:"第一等級",c:false},{t:"第二等級",c:false},{t:"第三等級",c:false},{t:"第四等級",c:true}], exp: "d。原南宋統治區域內的漢族與少數民族（長江以南），在元朝四等人制中被劃分為地位最低賤、受最嚴防範的「第四等級」（南人）。" },
-        { id: '3_37', q: "37.北宋時期，與其並立的少數民族政權有( )。(1)西夏 (2)遼 (3)金 (4)蒙古", opts: [{t:"(1)(2)(3)",c:true},{t:"(2)(3)(4)",c:false},{t:"(1)(2)(4)",c:false},{t:"(1)(2)(3)(4)",c:false}], exp: "a。北宋大部分時期與契丹「遼」、党項「西夏」並立；到了北宋末年，女真「金」國崛起並滅亡遼與宋。故(1)(2)(3)皆在北宋時期並立過。" },
-        { id: '3_38', q: "38.世界上最早的紙幣是中國北宋前期四川地區出現的\"交子\"，它產生的根本原因是( )。", opts: [{t:"造紙術和印刷術的普遍使用",c:false},{t:"市場上流通的貨幣攜帶不便",c:false},{t:"宋代商業的繁榮",c:true},{t:"北宋政府的大力推廣",c:false}], exp: "c。鐵錢笨重難攜雖是直接原因，但其「根本原因」在於宋代「商品經濟的繁榮」，大規模商貿交易使金屬貨幣已無法滿足流通需求。" },
-        { id: '3_39', q: "39.我國古代科技發明對世界文明的發展作出了巨大貢獻。下列表述正確的是( )。", opts: [{t:"北宋時，畢昇發明了雕版印刷術",c:false},{t:"北宋末年，中國的海船上開始使用指南針",c:true},{t:"指南針由印度人傳入歐洲，為歐洲航海創造了條件",c:false},{t:"北宋末年，火藥開始用於軍事領域",c:false}], exp: "b。畢昇發明的是活字印刷；指南針由阿拉伯人傳入歐洲；火藥在唐末就已開始用於軍事。正確描述為北宋時期海船已開始使用「指南針」。" },
-        { id: '3_40', q: "40.岳飛詩云:\"靖康恥，猶未雪…..\"，其中\"靖康恥\"是( )。", opts: [{t:"金擄徽宗、欽宗二帝，北宋滅亡",c:true},{t:"宋遼訂立\"澶淵之盟\"",c:false},{t:"南宋與金議和",c:false},{t:"岳飛被誣入遇害",c:false}], exp: "a。1127 年（靖康二年），金兵攻破汴京，俘擄了宋徽宗、宋欽宗二帝以及大量宗室百官，導致北宋滅亡，史稱「靖康之恥」。" }
-    ]
-};
-
-// --- Audio Synthesizer ---
-const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-function playSound(type) {
-    if(audioCtx.state === 'suspended') audioCtx.resume();
-    const osc = audioCtx.createOscillator();
-    const gainNode = audioCtx.createGain();
-    osc.connect(gainNode);
-    gainNode.connect(audioCtx.destination);
-
-    if (type === 'correct') {
-        osc.type = 'sine';
-        osc.frequency.setValueAtTime(523.25, audioCtx.currentTime); // C5
-        osc.frequency.exponentialRampToValueAtTime(880, audioCtx.currentTime + 0.1); // A5
-        gainNode.gain.setValueAtTime(0.2, audioCtx.currentTime);
-        gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.4);
-        osc.start();
-        osc.stop(audioCtx.currentTime + 0.4);
-    } else {
-        osc.type = 'sawtooth';
-        osc.frequency.setValueAtTime(150, audioCtx.currentTime);
-        osc.frequency.exponentialRampToValueAtTime(80, audioCtx.currentTime + 0.3);
-        gainNode.gain.setValueAtTime(0.2, audioCtx.currentTime);
-        gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.3);
-        osc.start();
-        osc.stop(audioCtx.currentTime + 0.3);
-    }
-}
-
-// --- App State & Logic ---
-const app = {
-    username: null,
-    db: { users: {} },
-    session: null,
-    activeBank: 'bank1', // Default bank
-    
-    // Learning State
-    learningPool: [],     // All questions not yet mastered
-    sessionPool: [],      // The 10 questions for current learning session
-    currentLearningIdx: 0,
-    currentLearningQ: null,
-    
-    // Test & Review State
-    testQuestions: [],
-    testCurrentIdx: 0,
-    testScore: 0,
-    testMissedQuestions: [],
-    reviewCurrentIdx: 0,
-
-    init() {
-        this.loadDB();
-        // UI Bindings
-        document.getElementById('username-input').addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') this.login();
-        });
-    },
-
-    loadDB() {
-        const data = localStorage.getItem('HistoryQuizDB_V6');
-        if (data) this.db = JSON.parse(data);
-    },
-
-    saveDB() {
-        localStorage.setItem('HistoryQuizDB_V6', JSON.stringify(this.db));
-    },
-
-    getUserData() {
-        if (!this.db.users[this.username]) {
-            this.db.users[this.username] = {};
-        }
-        
-        ['bank1', 'bank2', 'bank3'].forEach(bank => {
-            if (!this.db.users[this.username][bank]) {
-                this.db.users[this.username][bank] = {
-                    learningProgress: {},
-                    logs: []
-                };
-                QUESTION_DATA[bank].forEach(q => {
-                    this.db.users[this.username][bank].learningProgress[q.id] = { correct: 0, attempts: 0 };
-                });
-            }
-        });
-
-        this.saveDB();
-        return this.db.users[this.username];
-    },
-
-    switchScreen(screenId) {
-        ['screen-login', 'screen-menu', 'screen-learning', 'screen-test', 'screen-test-result', 'screen-stats', 'screen-review']
-            .forEach(id => document.getElementById(id).classList.add('hidden'));
-        document.getElementById(screenId).classList.remove('hidden');
-        window.scrollTo(0,0);
-    },
-
-    login() {
-        const input = document.getElementById('username-input');
-        const name = input.value.trim();
-        if (!name) return alert("請輸入您的名字！");
-        
-        this.username = name;
-        this.getUserData(); // Initialize if new
-        
-        document.getElementById('header-username').innerText = this.username;
-        this.activeBank = 'bank1'; // Reset to bank1 on login
-        this.showMenu();
-    },
-
-    logout() {
-        this.username = null;
-        document.getElementById('username-input').value = '';
-        document.getElementById('header-username').innerText = '';
-        this.switchScreen('screen-login');
-    },
-
-    updateTabUI(screenPrefix, activeBank) {
-        ['bank1', 'bank2', 'bank3'].forEach(b => {
-            const btn = document.getElementById(`${screenPrefix}-tab-${b}`);
-            if(btn) {
-                if (b === activeBank) {
-                    btn.classList.replace('tab-inactive', 'tab-active');
-                } else {
-                    btn.classList.replace('tab-active', 'tab-inactive');
-                }
-            }
-        });
-    },
-
-    switchBank(bankId) {
-        this.activeBank = bankId;
-        this.showMenu();
-    },
-
-    switchStatsBank(bankId) {
-        this.activeBank = bankId;
-        this.showStats();
-    },
-
-    showMenu() {
-        this.switchScreen('screen-menu');
-        this.updateTabUI('menu', this.activeBank);
-        
-        const userData = this.getUserData()[this.activeBank];
-        const bankInfo = BANK_INFO[this.activeBank];
-        const total = QUESTION_DATA[this.activeBank].length;
-        
-        document.getElementById('current-bank-title').innerText = bankInfo.title;
-        
-        // Calculate progress for active bank
-        let learnedCount = 0;
-        Object.values(userData.learningProgress).forEach(p => {
-            if (p.correct >= 2) learnedCount++;
-        });
-        
-        const pct = Math.round((learnedCount / total) * 100);
-        document.getElementById('learning-progress-text').innerText = `已熟記：${learnedCount} / ${total} 題 (${pct}%)`;
-        
-        const testBadge = document.getElementById('test-recommend-badge');
-        if (pct === 100) {
-            testBadge.classList.remove('hidden');
-        } else {
-            testBadge.classList.add('hidden');
-        }
-    },
-
-    // --- Format Explanation Helper ---
-    // Remove "a。", "b。", etc from the start of explanation so it works nicely when shuffled
-    getCleanExplanation(exp) {
-        return exp.replace(/^[a-dA-D]\s*[。.]\s*/, '');
-    },
-
-    // --- Learning Module ---
-    startLearning() {
-        const userData = this.getUserData()[this.activeBank];
-        this.session = { type: 'LEARNING', in: Date.now() };
-        
-        let unlearned = QUESTION_DATA[this.activeBank].filter(q => userData.learningProgress[q.id].correct < 2);
-        
-        if (unlearned.length === 0) {
-            alert(`太棒了！您已經熟記了【${BANK_INFO[this.activeBank].short}】的所有題目，建議您開始進行測驗挑戰！`);
-            return;
-        }
-
-        this.sessionPool = unlearned.slice(0, 10);
-        this.currentLearningIdx = 0;
-
-        document.getElementById('learning-bank-label').innerText = BANK_INFO[this.activeBank].short;
-        this.switchScreen('screen-learning');
-        this.updateLearningUI();
-        this.renderLearningQuestion();
-    },
-
-    updateLearningUI() {
-        const userData = this.getUserData()[this.activeBank];
-        const total = QUESTION_DATA[this.activeBank].length;
-        let learnedCount = 0;
-        Object.values(userData.learningProgress).forEach(p => { if (p.correct >= 2) learnedCount++; });
-        
-        document.getElementById('learning-global-counter').innerText = `${learnedCount}/${total}`;
-        
-        const pct = (this.currentLearningIdx / this.sessionPool.length) * 100;
-        document.getElementById('learning-progress-bar').style.width = `${pct}%`;
-        document.getElementById('learning-session-counter').innerText = `${this.currentLearningIdx + 1} / ${this.sessionPool.length}`;
-    },
-
-    renderLearningQuestion() {
-        document.getElementById('learning-feedback-content').classList.add('hidden');
-        document.getElementById('learning-action-area').classList.add('hidden');
-        document.getElementById('learning-options').classList.remove('pointer-events-none');
-        
-        this.currentLearningQ = this.sessionPool[this.currentLearningIdx];
-        
-        document.getElementById('learning-question-text').innerText = this.currentLearningQ.q;
-        const optionsContainer = document.getElementById('learning-options');
-        optionsContainer.innerHTML = '';
-        
-        const shuffledOpts = [...this.currentLearningQ.opts].sort(() => Math.random() - 0.5);
-        const letters = ['A', 'B', 'C', 'D'];
-        
-        shuffledOpts.forEach((opt, idx) => {
-            const btn = document.createElement('button');
-            btn.className = "w-full text-left p-4 rounded-xl border-2 border-slate-200 bg-white hover:border-blue-300 hover:bg-blue-50 transition-colors font-medium text-slate-700 option-btn flex justify-between items-center";
-            btn.dataset.isCorrect = opt.c; 
-            btn.innerHTML = `<div><span class="font-bold mr-3 text-blue-600">${letters[idx]}.</span><span>${opt.t}</span></div>`;
-            btn.onclick = () => this.handleLearningAnswer(opt, btn);
-            optionsContainer.appendChild(btn);
-        });
-    },
-
-    handleLearningAnswer(opt, btnElement) {
-        document.getElementById('learning-options').classList.add('pointer-events-none');
-        const userData = this.getUserData()[this.activeBank];
-        const qId = this.currentLearningQ.id;
-        userData.learningProgress[qId].attempts++;
-        
-        const feedbackContent = document.getElementById('learning-feedback-content');
-        feedbackContent.classList.remove('hidden');
-        document.getElementById('learning-action-area').classList.remove('hidden');
-
-        const cleanExp = this.getCleanExplanation(this.currentLearningQ.exp);
-        const expHTML = `
-            <div class="p-4 bg-indigo-50 rounded-xl border border-indigo-100 text-left text-sm text-slate-700 shadow-inner leading-relaxed mt-2">
-                <span class="font-bold text-indigo-800 text-base flex items-center mb-1">
-                    <svg class="w-5 h-5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"></path></svg>
-                    知識點摘要：
-                </span>
-                <span class="mt-1 inline-block">${cleanExp}</span>
-            </div>`;
-
-        if (opt.c) {
-            playSound('correct');
-            confetti({ particleCount: 50, spread: 60, origin: { y: 0.8 }, colors: ['#3b82f6', '#10b981', '#fbbf24'] });
-            btnElement.classList.replace('border-slate-200', 'border-emerald-500');
-            btnElement.classList.replace('bg-white', 'bg-emerald-50');
-            btnElement.classList.replace('text-slate-700', 'text-emerald-700');
-            btnElement.querySelector('.text-blue-600').classList.replace('text-blue-600', 'text-emerald-800');
-            
-            userData.learningProgress[qId].correct++;
-            this.saveDB();
-
-            if (userData.learningProgress[qId].correct >= 2) {
-                feedbackContent.innerHTML = `<div class="text-emerald-600 font-bold text-xl mb-3 flex justify-center items-center"><svg class="w-6 h-6 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>答對了！(已熟記)</div>${expHTML}`;
-            } else {
-                feedbackContent.innerHTML = `<div class="text-emerald-600 font-bold text-xl mb-3 flex justify-center items-center"><svg class="w-6 h-6 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>答對了！(需再答對 1 次)</div>${expHTML}`;
-                this.sessionPool.push(this.currentLearningQ);
-            }
-            this.updateLearningUI();
-
-        } else {
-            playSound('wrong');
-            btnElement.classList.add('shake');
-            setTimeout(() => btnElement.classList.remove('shake'), 400);
-            
-            btnElement.classList.replace('border-slate-200', 'border-red-400');
-            btnElement.classList.replace('bg-white', 'bg-red-50');
-            btnElement.classList.replace('text-slate-700', 'text-red-600');
-            btnElement.querySelector('.text-blue-600').classList.replace('text-blue-600', 'text-red-800');
-            
-            const optionsBtns = document.querySelectorAll('#learning-options .option-btn');
-            optionsBtns.forEach(btn => {
-                if (btn.dataset.isCorrect === 'true') {
-                    btn.classList.replace('border-slate-200', 'border-emerald-500');
-                    btn.classList.replace('bg-white', 'bg-emerald-500'); 
-                    btn.classList.replace('text-slate-700', 'text-white'); 
-                    btn.querySelector('.text-blue-600').classList.replace('text-blue-600', 'text-white');
-                    btn.innerHTML += `<span class="bg-white text-emerald-600 px-3 py-1 rounded-full text-xs font-black shadow-sm flex-shrink-0 ml-2">正確答案</span>`;
-                }
-            });
-
-            this.saveDB();
-            this.sessionPool.push(this.currentLearningQ);
-            this.updateLearningUI();
-
-            feedbackContent.innerHTML = `<div class="text-red-500 font-bold text-lg mb-3 flex justify-center items-center"><svg class="w-6 h-6 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>答錯了，請記下上方綠色標示的正確答案</div>${expHTML}`;
-        }
-        
-        // Auto scroll to feedback
-        setTimeout(() => window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' }), 50);
-    },
-
-    nextLearningQuestion() {
-        this.currentLearningIdx++;
-        if (this.currentLearningIdx < this.sessionPool.length) {
-            this.updateLearningUI();
-            this.renderLearningQuestion();
-            window.scrollTo(0,0);
-        } else {
-            this.exitLearning(true);
-        }
-    },
-
-    exitLearning(completed = false) {
-        if (this.session) {
-            this.session.out = Date.now();
-            this.getUserData()[this.activeBank].logs.unshift(this.session);
-            this.saveDB();
-            this.session = null;
-        }
-        if (completed) {
-            alert("本回合的溫習已完成！若尚未熟記該區全 40 題，可繼續點擊學習模式。");
-        }
-        this.showMenu();
-    },
-
-    // --- Test Module ---
-    startTest() {
-        this.session = { type: 'TEST', in: Date.now(), score: 0 };
-        this.testScore = 0;
-        this.testCurrentIdx = 0;
-        this.testMissedQuestions = [];
-        
-        const shuffledQuestions = [...QUESTION_DATA[this.activeBank]].sort(() => Math.random() - 0.5);
-        this.testQuestions = shuffledQuestions; 
-        
-        document.getElementById('test-bank-label').innerText = BANK_INFO[this.activeBank].short;
-        this.switchScreen('screen-test');
-        document.getElementById('test-exit-btn').classList.remove('hidden');
-        this.renderTestQuestion();
-    },
-
-    renderTestQuestion() {
-        document.getElementById('test-counter').innerText = this.testCurrentIdx + 1;
-        const q = this.testQuestions[this.testCurrentIdx];
-        document.getElementById('test-question-text').innerText = q.q;
-        
-        const optionsContainer = document.getElementById('test-options');
-        optionsContainer.innerHTML = '';
-        
-        const letters = ['A', 'B', 'C', 'D'];
-        const shuffledOpts = [...q.opts].sort(() => Math.random() - 0.5);
-        
-        shuffledOpts.forEach((opt, idx) => {
-            const btn = document.createElement('button');
-            btn.className = "w-full text-left p-4 rounded-xl border-2 border-slate-200 bg-white hover:border-emerald-300 hover:bg-emerald-50 transition-colors font-medium text-slate-700 option-btn flex items-center";
-            btn.innerHTML = `<span class="font-bold mr-3 text-emerald-600">${letters[idx]}.</span><span>${opt.t}</span>`;
-            btn.onclick = () => this.handleTestAnswer(opt);
-            optionsContainer.appendChild(btn);
-        });
-    },
-
-    handleTestAnswer(opt) {
-        if (opt.c) {
-            this.testScore += 2.5; 
-        } else {
-            // Save missed question for review
-            this.testMissedQuestions.push({ q: this.testQuestions[this.testCurrentIdx], userOpt: opt });
-        }
-        
-        this.testCurrentIdx++;
-        if (this.testCurrentIdx < this.testQuestions.length) {
-            this.renderTestQuestion();
-        } else {
-            this.finishTest();
-        }
-    },
-
-    finishTest() {
-        this.switchScreen('screen-test-result');
-        const score = this.testScore;
-        
-        if (this.session) {
-            this.session.out = Date.now();
-            this.session.score = score;
-            this.getUserData()[this.activeBank].logs.unshift(this.session);
-            this.saveDB();
-            this.session = null;
-        }
-
-        document.getElementById('result-user-label').innerText = this.username;
-        document.getElementById('result-bank-label').innerText = BANK_INFO[this.activeBank].short;
-        document.getElementById('test-final-score').innerText = score;
-        
-        const btn = document.getElementById('test-action-btn');
-        const icon = document.getElementById('test-result-icon');
-        const title = document.getElementById('test-result-title');
-        const desc = document.getElementById('test-result-desc');
-        const screenshotBtn = document.getElementById('test-screenshot-btn');
-
-        screenshotBtn.classList.add('hidden');
-
-        if (score === 100) {
-            icon.innerText = "🏆";
-            title.innerText = "完美滿分！";
-            title.className = "text-3xl font-black text-emerald-600 mb-2";
-            desc.innerText = "滿分為 100 分！需要截圖傳給爸媽嗎？";
-            btn.innerText = "再玩一次";
-            btn.className = "w-full bg-emerald-500 hover:bg-emerald-600 text-white font-bold py-4 rounded-xl shadow-md transition-colors text-lg";
-            btn.onclick = () => this.startTest();
-            screenshotBtn.classList.remove('hidden'); 
-            playSound('correct');
-            confetti({ particleCount: 150, spread: 100, origin: { y: 0.6 } });
-        } else {
-            // IF there are missed questions, make REVIEW the primary action
-            if (this.testMissedQuestions.length > 0) {
-                if (score >= 90) {
-                    icon.innerText = "⭐";
-                    title.innerText = "差點就可滿分！";
-                    title.className = "text-3xl font-bold text-amber-500 mb-2";
-                    desc.innerText = "請先回顧錯題，找出盲點再挑戰滿分！";
-                    playSound('correct');
-                } else if (score >= 60) {
-                    icon.innerText = "💪";
-                    title.innerText = "尚待努力！";
-                    title.className = "text-3xl font-bold text-blue-500 mb-2";
-                    desc.innerText = "分數達標，請先回顧錯題幫助記憶！";
-                    playSound('wrong');
-                } else {
-                    icon.innerText = "💔";
-                    title.innerText = "不合格！";
-                    title.className = "text-3xl font-bold text-red-500 mb-2";
-                    desc.innerText = "分數不達標，請務必回顧錯題並重新測驗！";
-                    playSound('wrong');
-                }
-                
-                btn.innerHTML = `<span class="flex items-center justify-center"><svg class="w-6 h-6 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path></svg>逐一回顧錯題 (${this.testMissedQuestions.length}題)</span>`;
-                btn.className = "w-full bg-amber-500 hover:bg-amber-600 text-white font-bold py-4 rounded-xl shadow-md transition-colors text-lg";
-                btn.onclick = () => this.startReview();
-            } else {
-                // Fallback just in case
-                btn.innerText = "直接再測驗";
-                btn.className = "w-full bg-blue-500 hover:bg-blue-600 text-white font-bold py-4 rounded-xl shadow-md transition-colors text-lg";
-                btn.onclick = () => this.startTest();
-                playSound('wrong');
-            }
-        }
-    },
-
-    // --- Missed Questions Review Module ---
-    startReview() {
-        this.reviewCurrentIdx = 0;
-        this.switchScreen('screen-review');
-        this.renderReviewQuestion();
-    },
-
-    renderReviewQuestion() {
-        const data = this.testMissedQuestions[this.reviewCurrentIdx];
-        const q = data.q;
-        
-        document.getElementById('review-counter').innerText = `${this.reviewCurrentIdx + 1}/${this.testMissedQuestions.length}`;
-        document.getElementById('review-question-text').innerText = q.q;
-
-        const optionsContainer = document.getElementById('review-options');
-        optionsContainer.innerHTML = '';
-
-        const letters = ['A', 'B', 'C', 'D'];
-        
-        // Render options in ORIGINAL order so explanation matches
-        q.opts.forEach((opt, idx) => {
-            let btnClass = "w-full text-left p-4 rounded-xl border-2 font-medium flex justify-between items-center bg-white border-slate-200 text-slate-700 opacity-60";
-            let rightLabel = "";
-            let letterColor = "text-slate-400";
-
-            if (opt.c) {
-                btnClass = "w-full text-left p-4 rounded-xl border-2 font-medium flex justify-between items-center bg-emerald-500 border-emerald-500 text-white shadow-md scale-[1.02]";
-                rightLabel = `<span class="bg-white text-emerald-600 px-3 py-1 rounded-full text-xs font-black shadow-sm flex-shrink-0 ml-2">正確答案</span>`;
-                letterColor = "text-white";
-            } else if (data.userOpt === opt) {
-                btnClass = "w-full text-left p-4 rounded-xl border-2 font-medium flex justify-between items-center bg-red-50 border-red-400 text-red-600";
-                rightLabel = `<span class="bg-red-100 text-red-600 px-3 py-1 rounded-full text-xs font-black flex-shrink-0 ml-2">你的選擇</span>`;
-                letterColor = "text-red-800";
-            }
-
-            const btn = document.createElement('div');
-            btn.className = btnClass;
-            btn.innerHTML = `<div><span class="font-bold mr-3 ${letterColor}">${letters[idx]}.</span><span>${opt.t}</span></div>${rightLabel}`;
-            optionsContainer.appendChild(btn);
-        });
-
-        // Use cleaned explanation
-        const cleanExp = this.getCleanExplanation(q.exp);
-        document.getElementById('review-feedback-content').innerHTML = `
-            <div class="p-4 bg-indigo-50 rounded-xl border border-indigo-100 text-left text-sm text-slate-700 shadow-inner leading-relaxed mt-2">
-                <span class="font-bold text-indigo-800 text-base flex items-center mb-2">
-                    <svg class="w-5 h-5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"></path></svg>
-                    知識點摘要：
-                </span>
-                ${cleanExp}
-            </div>
-        `;
-    },
-
-    nextReviewQuestion() {
-        this.reviewCurrentIdx++;
-        if (this.reviewCurrentIdx < this.testMissedQuestions.length) {
-            this.renderReviewQuestion();
-            window.scrollTo(0,0);
-        } else {
-            this.finishReview();
-        }
-    },
-
-    finishReview() {
-        this.switchScreen('screen-test-result');
-        document.getElementById('test-result-icon').innerText = "📚";
-        document.getElementById('test-result-title').innerText = "錯題回顧完成！";
-        document.getElementById('test-result-title').className = "text-3xl font-bold text-blue-600 mb-2";
-        document.getElementById('test-result-desc').innerText = "錯題已全數複習完畢，準備好重新測驗了嗎？";
-        
-        const actionBtn = document.getElementById('test-action-btn');
-        actionBtn.innerText = "重新測驗挑戰";
-        actionBtn.className = "w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 rounded-xl shadow-md transition-colors text-lg";
-        actionBtn.onclick = () => this.startTest();
-        window.scrollTo(0,0);
-    },
-
-    takeScreenshot() {
-        const target = document.getElementById('screenshot-area');
-        html2canvas(target, { backgroundColor: '#f8fafc', scale: 2 }).then(canvas => {
-            const link = document.createElement('a');
-            link.download = `歷史滿分截圖_${this.username}_${BANK_INFO[this.activeBank].short}.png`;
-            link.href = canvas.toDataURL('image/png');
-            link.click();
-        });
-    },
-
-    exitTest() {
-        if (confirm("確定要中途退出測驗嗎？成績將不會被完整記錄。")) {
-            this.session = null;
-            this.showMenu();
-        }
-    },
-
-    // --- Stats Module ---
-    showStats() {
-        this.switchScreen('screen-stats');
-        this.updateTabUI('stats', this.activeBank);
-        
-        const userData = this.getUserData()[this.activeBank];
-        const total = QUESTION_DATA[this.activeBank].length;
-        
-        document.getElementById('stats-bank-title').innerText = BANK_INFO[this.activeBank].title;
-        document.getElementById('stats-learned-count-title').innerText = `本區學習進度 - ${this.username} (每題需答對2次)`;
-        
-        // Overall Progress
-        let learnedCount = 0;
-        Object.values(userData.learningProgress).forEach(p => { if (p.correct >= 2) learnedCount++; });
-        document.getElementById('stats-learned-count').innerText = `${learnedCount}/${total}`;
-        document.getElementById('stats-progress-bar').style.width = `${(learnedCount/total)*100}%`;
-
-        // Render Logs
-        const logsContainer = document.getElementById('stats-logs');
-        logsContainer.innerHTML = '';
-        
-        if (userData.logs.length === 0) {
-            logsContainer.innerHTML = '<p class="text-sm text-slate-400 text-center py-4">暫無活動記錄</p>';
-            return;
-        }
-
-        userData.logs.forEach(log => {
-            const dateOut = log.out ? new Date(log.out) : new Date(log.in);
-            // Year, Month, Day, Hour, Minute formatted
-            const dateStr = `${dateOut.getFullYear()}年${(dateOut.getMonth()+1).toString().padStart(2,'0')}月${dateOut.getDate().toString().padStart(2,'0')}日 ${dateOut.getHours().toString().padStart(2,'0')}:${dateOut.getMinutes().toString().padStart(2,'0')}`;
-            const duration = log.out ? Math.max(1, Math.round((log.out - log.in)/1000/60)) : 1; 
-            
-            const el = document.createElement('div');
-            el.className = "bg-white p-3 rounded-lg border border-slate-100 shadow-sm flex justify-between items-center";
-            
-            if (log.type === 'LEARNING') {
-                el.innerHTML = `
-                    <div>
-                        <div class="font-bold text-blue-600 text-sm">📖 學習模式</div>
-                        <div class="text-xs text-slate-500 mt-1">使用者: <span class="font-bold text-slate-700">${this.username}</span> | 登出時間: ${dateStr}</div>
-                        <div class="text-xs text-slate-400 mt-1">耗時約 ${duration} 分鐘</div>
-                    </div>
-                `;
-            } else {
-                const scoreColor = log.score === 100 ? 'text-emerald-500' : (log.score >= 60 ? 'text-blue-500' : 'text-red-500');
-                el.innerHTML = `
-                    <div>
-                        <div class="font-bold text-emerald-600 text-sm">⚔️ 測驗模式 (40題)</div>
-                        <div class="text-xs text-slate-500 mt-1">使用者: <span class="font-bold text-slate-700">${this.username}</span> | 登出時間: ${dateStr}</div>
-                        <div class="text-xs text-slate-400 mt-1">耗時約 ${duration} 分鐘</div>
-                    </div>
-                    <div class="font-black text-xl ${scoreColor}">${log.score}分</div>
-                `;
-            }
-            logsContainer.appendChild(el);
-        });
-    }
-};
-
-// Initialize app when DOM is fully loaded
-document.addEventListener('DOMContentLoaded', () => app.init());
-
-</script>
-</body>
-</html>
+diff --git a/index.html b/index.html
+index 1cd3f82381b9862b0e350ff3ce8b257bd3d99e43..c90ec0647374752a53158cf77205e3d7c99cbd24 100644
+--- a/index.html
++++ b/index.html
+@@ -84,60 +84,60 @@
+                     📊 查看此題庫記錄
+                 </button>
+             </div>
+ 
+             <button onclick="app.logout()" class="mt-auto pt-8 text-slate-400 hover:text-slate-600 underline text-sm pb-4">
+                 登出更換使用者
+             </button>
+         </div>
+ 
+         <!-- ==================== LEARNING SCREEN ==================== -->
+         <div id="screen-learning" class="hidden absolute inset-0 p-5 flex flex-col fade-in bg-white z-20">
+             <div class="flex justify-between items-center mb-4">
+                 <button onclick="app.exitLearning()" class="text-slate-400 hover:text-slate-600 p-2">
+                     <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
+                 </button>
+                 <div class="text-sm font-bold text-blue-600 bg-blue-50 px-3 py-1 rounded-full border border-blue-100 flex flex-col items-end">
+                     <span><span id="learning-bank-label" class="mr-2 border-r border-blue-200 pr-2">溫習 1</span>總進度: <span id="learning-global-counter">0/40</span> 題</span>
+                 </div>
+             </div>
+             
+             <div class="w-full bg-slate-200 rounded-full h-2.5 mb-2">
+                 <div id="learning-progress-bar" class="bg-blue-600 h-2.5 rounded-full transition-all duration-500" style="width: 0%"></div>
+             </div>
+             <div class="text-xs text-slate-400 text-right mb-4">本次溫習區間進度: <span id="learning-session-counter">1/10</span></div>
+ 
+-            <div id="learning-question-container" class="flex-grow flex flex-col pb-20">
++            <div id="learning-question-container" class="flex-grow min-h-0 overflow-y-auto flex flex-col pb-6">
+                 <h3 id="learning-question-text" class="text-xl font-bold text-slate-800 mb-6 leading-relaxed"></h3>
+                 <div id="learning-options" class="space-y-3 mb-6">
+                     <!-- Options injected here -->
+                 </div>
+                 <div id="learning-feedback-content" class="hidden mb-6"></div>
+             </div>
+ 
+-            <!-- Fixed Bottom Action Area for Learning -->
+-            <div id="learning-action-area" class="hidden absolute bottom-0 left-0 right-0 p-4 bg-white border-t border-slate-100 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)] z-30">
++            <!-- Bottom Action Area for Learning -->
++            <div id="learning-action-area" class="hidden shrink-0 p-4 -mx-5 -mb-5 bg-white border-t border-slate-100 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)] z-30">
+                 <button id="learning-next-btn" onclick="app.nextLearningQuestion()" class="w-full bg-emerald-500 hover:bg-emerald-600 text-white font-bold py-4 rounded-xl shadow-md transition-colors text-lg">我明白了，下一題</button>
+             </div>
+         </div>
+ 
+         <!-- ==================== TEST SCREEN ==================== -->
+         <div id="screen-test" class="hidden absolute inset-0 p-5 flex flex-col fade-in bg-white z-20">
+             <div class="flex justify-between items-center mb-4">
+                 <button id="test-exit-btn" onclick="app.exitTest()" class="text-slate-400 hover:text-slate-600 p-2">
+                     <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
+                 </button>
+                 <div class="text-sm font-bold text-emerald-600 bg-emerald-50 px-3 py-1 rounded-full border border-emerald-100">
+                     <span id="test-bank-label" class="mr-2 border-r border-emerald-200 pr-2">溫習 1</span>
+                     第 <span id="test-counter">1</span> / 40 題
+                 </div>
+             </div>
+             
+             <div id="test-question-container" class="flex-grow flex flex-col mt-4">
+                 <h3 id="test-question-text" class="text-xl font-bold text-slate-800 mb-6 leading-relaxed"></h3>
+                 <div id="test-options" class="space-y-3">
+                     <!-- Options injected here -->
+                 </div>
+             </div>
+         </div>
+ 
+         <!-- ==================== TEST RESULT SCREEN ==================== -->
+@@ -156,60 +156,60 @@
+                     <div class="text-sm text-slate-400">總分</div>
+                 </div>
+             </div>
+ 
+             <div class="w-full space-y-3 mt-4">
+                 <button id="test-screenshot-btn" onclick="app.takeScreenshot()" class="hidden w-full bg-indigo-500 hover:bg-indigo-600 text-white font-bold py-3 rounded-xl shadow-md transition-colors text-lg flex justify-center items-center">
+                     <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+                     儲存截圖傳給爸媽
+                 </button>
+                 <button id="test-action-btn" class="w-full font-bold py-4 rounded-xl shadow-md transition-colors text-lg text-white"></button>
+                 <button onclick="app.showMenu()" class="w-full bg-slate-200 hover:bg-slate-300 text-slate-700 font-bold py-3 rounded-xl transition-colors text-sm">返回主選單</button>
+             </div>
+         </div>
+ 
+         <!-- ==================== REVIEW SCREEN (錯題回顧) ==================== -->
+         <div id="screen-review" class="hidden absolute inset-0 p-5 flex flex-col fade-in bg-white z-40">
+             <div class="flex justify-between items-center mb-4">
+                 <button onclick="app.finishReview()" class="text-slate-400 hover:text-slate-600 p-2">
+                     <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
+                 </button>
+                 <div class="text-sm font-bold text-amber-600 bg-amber-50 px-3 py-1 rounded-full border border-amber-100">
+                     錯題回顧: 第 <span id="review-counter">1/5</span> 題
+                 </div>
+             </div>
+ 
+-            <div class="flex-grow overflow-y-auto pb-24">
++            <div class="flex-grow min-h-0 overflow-y-auto pb-6">
+                 <h3 id="review-question-text" class="text-xl font-bold text-slate-800 mb-6 leading-relaxed"></h3>
+                 <div id="review-options" class="space-y-3 mb-6">
+                     <!-- Options injected here -->
+                 </div>
+                 <div id="review-feedback-content" class="mb-6"></div>
+             </div>
+ 
+-            <!-- Fixed Bottom Action Area for Review -->
+-            <div class="absolute bottom-0 left-0 right-0 p-4 bg-white border-t border-slate-100 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)]">
++            <!-- Bottom Action Area for Review -->
++            <div class="shrink-0 p-4 -mx-5 -mb-5 bg-white border-t border-slate-100 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)]">
+                 <button onclick="app.nextReviewQuestion()" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 rounded-xl shadow-md transition-colors text-lg">我明白了，下一題</button>
+             </div>
+         </div>
+ 
+         <!-- ==================== STATS SCREEN ==================== -->
+         <div id="screen-stats" class="hidden absolute inset-0 p-5 flex flex-col fade-in bg-slate-50 z-20 overflow-hidden">
+             <div class="flex items-center mb-6">
+                 <button onclick="app.showMenu()" class="text-slate-500 hover:text-slate-800 mr-3 p-1">
+                     <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
+                 </button>
+                 <h2 class="text-xl font-bold text-slate-800">學習記錄</h2>
+             </div>
+ 
+             <!-- Stats Bank Selector -->
+             <div class="flex bg-slate-200 p-1 rounded-xl mb-6 w-full">
+                 <button onclick="app.switchStatsBank('bank1')" id="stats-tab-bank1" class="flex-1 py-2 rounded-lg text-sm font-bold transition-all tab-active">溫習 1</button>
+                 <button onclick="app.switchStatsBank('bank2')" id="stats-tab-bank2" class="flex-1 py-2 rounded-lg text-sm font-bold transition-all tab-inactive">溫習 2</button>
+                 <button onclick="app.switchStatsBank('bank3')" id="stats-tab-bank3" class="flex-1 py-2 rounded-lg text-sm font-bold transition-all tab-inactive">溫習 3</button>
+             </div>
+ 
+             <div class="flex-grow overflow-y-auto space-y-4 pb-10">
+                 <div class="text-center font-bold text-blue-700 mb-2" id="stats-bank-title">初一第二段歷史總溫習 1</div>
+                 
+                 <!-- Overall Progress -->
+                 <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-100">
+@@ -646,60 +646,60 @@ const app = {
+             setTimeout(() => btnElement.classList.remove('shake'), 400);
+             
+             btnElement.classList.replace('border-slate-200', 'border-red-400');
+             btnElement.classList.replace('bg-white', 'bg-red-50');
+             btnElement.classList.replace('text-slate-700', 'text-red-600');
+             btnElement.querySelector('.text-blue-600').classList.replace('text-blue-600', 'text-red-800');
+             
+             const optionsBtns = document.querySelectorAll('#learning-options .option-btn');
+             optionsBtns.forEach(btn => {
+                 if (btn.dataset.isCorrect === 'true') {
+                     btn.classList.replace('border-slate-200', 'border-emerald-500');
+                     btn.classList.replace('bg-white', 'bg-emerald-500'); 
+                     btn.classList.replace('text-slate-700', 'text-white'); 
+                     btn.querySelector('.text-blue-600').classList.replace('text-blue-600', 'text-white');
+                     btn.innerHTML += `<span class="bg-white text-emerald-600 px-3 py-1 rounded-full text-xs font-black shadow-sm flex-shrink-0 ml-2">正確答案</span>`;
+                 }
+             });
+ 
+             this.saveDB();
+             this.sessionPool.push(this.currentLearningQ);
+             this.updateLearningUI();
+ 
+             feedbackContent.innerHTML = `<div class="text-red-500 font-bold text-lg mb-3 flex justify-center items-center"><svg class="w-6 h-6 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>答錯了，請記下上方綠色標示的正確答案</div>${expHTML}`;
+         }
+         
+-        // Auto scroll to feedback
+-        setTimeout(() => window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' }), 50);
++        // Auto scroll within the learning panel so long explanations remain reachable.
++        setTimeout(() => feedbackContent.scrollIntoView({ behavior: 'smooth', block: 'nearest' }), 50);
+     },
+ 
+     nextLearningQuestion() {
+         this.currentLearningIdx++;
+         if (this.currentLearningIdx < this.sessionPool.length) {
+             this.updateLearningUI();
+             this.renderLearningQuestion();
+-            window.scrollTo(0,0);
++            document.getElementById('learning-question-container').scrollTo(0, 0);
+         } else {
+             this.exitLearning(true);
+         }
+     },
+ 
+     exitLearning(completed = false) {
+         if (this.session) {
+             this.session.out = Date.now();
+             this.getUserData()[this.activeBank].logs.unshift(this.session);
+             this.saveDB();
+             this.session = null;
+         }
+         if (completed) {
+             alert("本回合的溫習已完成！若尚未熟記該區全 40 題，可繼續點擊學習模式。");
+         }
+         this.showMenu();
+     },
+ 
+     // --- Test Module ---
+     startTest() {
+         this.session = { type: 'TEST', in: Date.now(), score: 0 };
+         this.testScore = 0;
+         this.testCurrentIdx = 0;
+         this.testMissedQuestions = [];
+         
+@@ -855,51 +855,51 @@ const app = {
+             }
+ 
+             const btn = document.createElement('div');
+             btn.className = btnClass;
+             btn.innerHTML = `<div><span class="font-bold mr-3 ${letterColor}">${letters[idx]}.</span><span>${opt.t}</span></div>${rightLabel}`;
+             optionsContainer.appendChild(btn);
+         });
+ 
+         // Use cleaned explanation
+         const cleanExp = this.getCleanExplanation(q.exp);
+         document.getElementById('review-feedback-content').innerHTML = `
+             <div class="p-4 bg-indigo-50 rounded-xl border border-indigo-100 text-left text-sm text-slate-700 shadow-inner leading-relaxed mt-2">
+                 <span class="font-bold text-indigo-800 text-base flex items-center mb-2">
+                     <svg class="w-5 h-5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"></path></svg>
+                     知識點摘要：
+                 </span>
+                 ${cleanExp}
+             </div>
+         `;
+     },
+ 
+     nextReviewQuestion() {
+         this.reviewCurrentIdx++;
+         if (this.reviewCurrentIdx < this.testMissedQuestions.length) {
+             this.renderReviewQuestion();
+-            window.scrollTo(0,0);
++            document.getElementById('screen-review').querySelector('.overflow-y-auto').scrollTo(0, 0);
+         } else {
+             this.finishReview();
+         }
+     },
+ 
+     finishReview() {
+         this.switchScreen('screen-test-result');
+         document.getElementById('test-result-icon').innerText = "📚";
+         document.getElementById('test-result-title').innerText = "錯題回顧完成！";
+         document.getElementById('test-result-title').className = "text-3xl font-bold text-blue-600 mb-2";
+         document.getElementById('test-result-desc').innerText = "錯題已全數複習完畢，準備好重新測驗了嗎？";
+         
+         const actionBtn = document.getElementById('test-action-btn');
+         actionBtn.innerText = "重新測驗挑戰";
+         actionBtn.className = "w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 rounded-xl shadow-md transition-colors text-lg";
+         actionBtn.onclick = () => this.startTest();
+         window.scrollTo(0,0);
+     },
+ 
+     takeScreenshot() {
+         const target = document.getElementById('screenshot-area');
+         html2canvas(target, { backgroundColor: '#f8fafc', scale: 2 }).then(canvas => {
+             const link = document.createElement('a');
+             link.download = `歷史滿分截圖_${this.username}_${BANK_INFO[this.activeBank].short}.png`;
+             link.href = canvas.toDataURL('image/png');
