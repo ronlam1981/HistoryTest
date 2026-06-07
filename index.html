@@ -106,7 +106,7 @@
             </div>
             <div class="text-xs text-slate-400 text-right mb-4">本次溫習區間進度: <span id="learning-session-counter">1/10</span></div>
 
-            <div id="learning-question-container" class="flex-grow flex flex-col pb-20">
+            <div id="learning-question-container" class="flex-grow min-h-0 overflow-y-auto flex flex-col pb-6">
                 <h3 id="learning-question-text" class="text-xl font-bold text-slate-800 mb-6 leading-relaxed"></h3>
                 <div id="learning-options" class="space-y-3 mb-6">
                     <!-- Options injected here -->
@@ -114,8 +114,8 @@
                 <div id="learning-feedback-content" class="hidden mb-6"></div>
             </div>
 
-            <!-- Fixed Bottom Action Area for Learning -->
-            <div id="learning-action-area" class="hidden absolute bottom-0 left-0 right-0 p-4 bg-white border-t border-slate-100 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)] z-30">
+            <!-- Bottom Action Area for Learning -->
+            <div id="learning-action-area" class="hidden shrink-0 p-4 -mx-5 -mb-5 bg-white border-t border-slate-100 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)] z-30">
                 <button id="learning-next-btn" onclick="app.nextLearningQuestion()" class="w-full bg-emerald-500 hover:bg-emerald-600 text-white font-bold py-4 rounded-xl shadow-md transition-colors text-lg">我明白了，下一題</button>
             </div>
         </div>
@@ -178,7 +178,7 @@
                 </div>
             </div>
 
-            <div class="flex-grow overflow-y-auto pb-24">
+            <div class="flex-grow min-h-0 overflow-y-auto pb-6">
                 <h3 id="review-question-text" class="text-xl font-bold text-slate-800 mb-6 leading-relaxed"></h3>
                 <div id="review-options" class="space-y-3 mb-6">
                     <!-- Options injected here -->
@@ -186,8 +186,8 @@
                 <div id="review-feedback-content" class="mb-6"></div>
             </div>
 
-            <!-- Fixed Bottom Action Area for Review -->
-            <div class="absolute bottom-0 left-0 right-0 p-4 bg-white border-t border-slate-100 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)]">
+            <!-- Bottom Action Area for Review -->
+            <div class="shrink-0 p-4 -mx-5 -mb-5 bg-white border-t border-slate-100 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)]">
                 <button onclick="app.nextReviewQuestion()" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 rounded-xl shadow-md transition-colors text-lg">我明白了，下一題</button>
             </div>
         </div>
@@ -668,8 +668,8 @@ const app = {
             feedbackContent.innerHTML = `<div class="text-red-500 font-bold text-lg mb-3 flex justify-center items-center"><svg class="w-6 h-6 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>答錯了，請記下上方綠色標示的正確答案</div>${expHTML}`;
         }
         
-        // Auto scroll to feedback
-        setTimeout(() => window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' }), 50);
+        // Auto scroll within the learning panel so long explanations remain reachable.
+        setTimeout(() => feedbackContent.scrollIntoView({ behavior: 'smooth', block: 'nearest' }), 50);
     },
 
     nextLearningQuestion() {
@@ -677,7 +677,7 @@ const app = {
         if (this.currentLearningIdx < this.sessionPool.length) {
             this.updateLearningUI();
             this.renderLearningQuestion();
-            window.scrollTo(0,0);
+            document.getElementById('learning-question-container').scrollTo(0, 0);
         } else {
             this.exitLearning(true);
         }
@@ -877,7 +877,7 @@ const app = {
         this.reviewCurrentIdx++;
         if (this.reviewCurrentIdx < this.testMissedQuestions.length) {
             this.renderReviewQuestion();
-            window.scrollTo(0,0);
+            document.getElementById('screen-review').querySelector('.overflow-y-auto').scrollTo(0, 0);
         } else {
             this.finishReview();
         }
